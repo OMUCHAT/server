@@ -18,7 +18,7 @@ from omu.interface.serializable import Serializable, Serializer
 
 from omuserver.extension.extension import Extension
 from omuserver.extension.table.dict_table import DictTable
-from omuserver.extension.table.sqlitedict_table import SqliteTable
+from omuserver.extension.table.sqlitedict_table import SqlitedictTable
 from omuserver.extension.table.table import TableServer
 from omuserver.network.network import NetworkListener
 from omuserver.server import Server, ServerListener
@@ -70,7 +70,7 @@ class TableExtension(Extension, NetworkListener, ServerListener):
         path = self._server.data_path / "tables" / info.extension / info.name
         path.mkdir(parents=True, exist_ok=True)
         if info.use_database:
-            table = SqliteTable(self._server, path, info, serializer)
+            table = SqlitedictTable(self._server, path, info, serializer)
         else:
             table = DictTable(self._server, path, info, serializer)
         self._tables[info.key()] = table
