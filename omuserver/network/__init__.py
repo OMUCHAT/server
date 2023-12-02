@@ -1,8 +1,8 @@
-from .fastapi_network import FastAPINetwork
 from .headers import Headers
 from .network import Network, NetworkListener
 from .request import Request
 from .response import Response
+from .websockets_network import WebsocketsNetwork
 
 __all__ = [
     "Headers",
@@ -10,5 +10,5 @@ __all__ = [
     "Response",
     "Network",
     "NetworkListener",
-    "FastAPINetwork",
+    "WebsocketsNetwork",
 ]

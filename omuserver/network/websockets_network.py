@@ -1,31 +1,29 @@
-import threading
 from typing import Any, Awaitable, Callable, Dict, List
 
-from fastapi import FastAPI
-from fastapi.websockets import WebSocket
+import websockets
+from loguru import logger
 from omu.endpoint.endpoint import EndpointType
-from starlette.middleware.cors import CORSMiddleware
-from uvicorn import run
 
 from omuserver.network.network import Network, NetworkListener
 from omuserver.server import Server, ServerListener
 from omuserver.session.session import Session, SessionListener
-from omuserver.session.websocket_session import WebSocketSession
+from omuserver.session.websockets_session import WebSocketsSession
 
 
-class FastAPINetwork(Network, ServerListener, SessionListener):
-    def __init__(self, server: Server, app: FastAPI) -> None:
+class WebsocketsNetwork(Network, ServerListener, SessionListener):
+    def __init__(self, server: Server) -> None:
         self._server = server
-        self._app = app
         self._listeners: List[NetworkListener] = []
         self._endpoints: Dict[str, Callable[[Any], Awaitable[Any]]] = {}
-        self._sessions: Dict[str, WebSocketSession] = {}
-        self._app.websocket_route("/api/v1/ws")(self._websocket_handler)
+        self._sessions: Dict[str, WebSocketsSession] = {}
+        self._start = websockets.serve(
+            self._websocket_handler,
+            self._server.address.host,
+            self._server.address.port,
+        )
         server.add_listener(self)
 
-    def bind_endpoint[
-        ReqData, ResData
-    ](
+    def bind_endpoint[ReqData, ResData](
         self,
         type: EndpointType[Any, Any, ReqData, ResData],
         handler: Callable[[ReqData], Awaitable[ResData]],
@@ -34,11 +32,8 @@ class FastAPINetwork(Network, ServerListener, SessionListener):
         if key in self._endpoints:
             raise ValueError(f"Endpoint {key} already bound")
         self._endpoints[key] = handler
-        self._app.post(f"/api/v1/{key}")(self._wrap_handler(type, handler))
 
-    def _wrap_handler[
-        ReqData, ResData
-    ](
+    def _wrap_handler[ReqData, ResData](
         self,
         type: EndpointType[Any, Any, ReqData, ResData],
         handler: Callable[[ReqData], Awaitable[ResData]],
@@ -50,11 +45,14 @@ class FastAPINetwork(Network, ServerListener, SessionListener):
 
         return _handler  # type: ignore
 
-    async def _websocket_handler(self, websocket: WebSocket) -> None:
-        await websocket.accept()
-        session = await WebSocketSession.create(websocket)
+    async def _websocket_handler(
+        self, websocket: websockets.WebSocketServerProtocol
+    ) -> None:
+        session = await WebSocketsSession.create(websocket)
         if session.app.key() in self._sessions:
-            raise ValueError(f"Session {session.app.key()} already exists")
+            # raise ValueError(f"Session {session.app.key()} already exists")
+            logger.warning(f"Session {session.app.key()} already exists")
+            await self._sessions[session.app.key()].disconnect()
         self._sessions[session.app.key()] = session
         session.add_listener(self)
         for listener in self._listeners:
@@ -68,20 +66,7 @@ class FastAPINetwork(Network, ServerListener, SessionListener):
             await listener.on_disconnected(session)
 
     async def start(self) -> None:
-        address = self._server.address
-
-        def _thread() -> None:
-            self._app.add_middleware(
-                CORSMiddleware,
-                allow_origins=["*"],
-                allow_credentials=True,
-                allow_methods=["*"],
-                allow_headers=["*"],
-            )
-            run(self._app, host=address.host, port=address.port, loop="asyncio")
-
-        thread = threading.Thread(target=_thread, daemon=True, name="FastAPI")
-        thread.start()
+        await self._start
 
     def add_listener(self, listener: NetworkListener) -> None:
         self._listeners.append(listener)

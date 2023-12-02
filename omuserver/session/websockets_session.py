@@ -1,16 +1,17 @@
 from __future__ import annotations
 
+import json
 from typing import Any, List
 
 from omu.event.event import EventJson, EventType
 from omu.extension.server.model.app import App, AppJson
-from starlette.websockets import WebSocket, WebSocketDisconnect
+from websockets import WebSocketServerProtocol, exceptions
 
 from omuserver.session import Session, SessionListener
 
 
-class WebSocketSession(Session):
-    def __init__(self, socket: WebSocket, app: App) -> None:
+class WebSocketsSession(Session):
+    def __init__(self, socket: WebSocketServerProtocol, app: App) -> None:
         self.socket = socket
         self._app = app
         self._listeners: List[SessionListener] = []
@@ -20,8 +21,8 @@ class WebSocketSession(Session):
         return self._app
 
     @classmethod
-    async def create(cls, socket: WebSocket) -> WebSocketSession:
-        event = EventJson.from_json_as(AppJson, await socket.receive_json())
+    async def create(cls, socket: WebSocketServerProtocol) -> WebSocketsSession:
+        event = EventJson.from_json_as(AppJson, json.loads(await socket.recv()))
         try:
             app = App.from_json(event.data)
         except Exception as e:
@@ -29,17 +30,17 @@ class WebSocketSession(Session):
         return cls(socket, app)
 
     async def _receive(self) -> EventJson:
-        return EventJson(**await self.socket.receive_json())
+        return EventJson(**json.loads(await self.socket.recv()))
 
     async def start(self) -> None:
         try:
             while True:
                 try:
-                    async for message in self.socket.iter_json():
-                        event = EventJson(**message)
+                    async for message in self.socket:
+                        event = EventJson(**json.loads(message))
                         for listener in self._listeners:
                             await listener.on_event(self, event)
-                except WebSocketDisconnect:
+                except exceptions.ConnectionClosedOK:
                     break
         finally:
             await self.disconnect()
@@ -53,11 +54,13 @@ class WebSocketSession(Session):
             await listener.on_disconnected(self)
 
     async def send[T](self, type: EventType[Any, T], data: T) -> None:
-        await self.socket.send_json(
-            {
-                "type": type.type,
-                "data": type.serializer.serialize(data),
-            }
+        await self.socket.send(
+            json.dumps(
+                {
+                    "type": type.type,
+                    "data": type.serializer.serialize(data),
+                }
+            )
         )
 
     def add_listener(self, listener: SessionListener) -> None:

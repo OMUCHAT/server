@@ -4,9 +4,9 @@ from omu.connection.address import Address
 
 from omuserver.extension.server.server_extension import ServerExtension
 from omuserver.extension.table import TableExtension
-from omuserver.fastapi_server import FastApiServer
+from omuserver.server.websockets_server import WebsocketsServer
 
-server = FastApiServer(
+server = WebsocketsServer(
     Address(
         host="0.0.0.0",
         port=26423,

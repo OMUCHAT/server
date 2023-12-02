@@ -2,7 +2,6 @@ import asyncio
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import FastAPI
 from omu.connection.address import Address
 from omu.event.events import EVENTS
 
@@ -11,24 +10,23 @@ from omuserver.extension.extension_registry import (
     ExtensionRegistry,
     ExtensionRegistryServer,
 )
-from omuserver.network import FastAPINetwork, Network
+from omuserver.network import Network
+from omuserver.network.websockets_network import WebsocketsNetwork
 
 from .server import Server, ServerListener
 
 
-class FastApiServer(Server):
+class WebsocketsServer(Server):
     def __init__(
         self,
         address: Address,
-        app: Optional[FastAPI] = None,
         network: Optional[Network] = None,
         extensions: Optional[ExtensionRegistry] = None,
         data_dir: Optional[Path] = None,
     ) -> None:
         self._address = address
-        self._app = app or FastAPI()
         self._listeners: List[ServerListener] = []
-        self._network = network or FastAPINetwork(self, self._app)
+        self._network = network or WebsocketsNetwork(self)
         self._events = EventRegistry(self)
         self._events.register(EVENTS.Connect, EVENTS.Ready)
         self._extensions = extensions or ExtensionRegistryServer(self)

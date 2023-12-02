@@ -6,11 +6,12 @@ from typing import TYPE_CHECKING, Any, Callable, Coroutine, Dict, List
 from loguru import logger
 
 from omuserver.network.network import NetworkListener
-from omuserver.server import Server
 from omuserver.session.session import Session, SessionListener
 
 if TYPE_CHECKING:
     from omu.event import EventJson, EventType
+
+    from omuserver.server import Server
 
 
 type EventCallback[T] = Callable[[Session, T], Coroutine[Any, Any, None]]
@@ -22,9 +23,7 @@ class EventRegistry(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def add_listener[
-        T
-    ](
+    def add_listener[T](
         self,
         event_type: EventType[T, Any],
         listener: EventCallback[T] | None = None,
@@ -72,9 +71,7 @@ class EventRegistry(EventRegistry, NetworkListener, SessionListener):
                 raise ValueError(f"Event type {type.type} already registered")
             self._events[type.type] = EventEntry(type, [])
 
-    def add_listener[
-        T
-    ](
+    def add_listener[T](
         self,
         event_type: EventType[T, Any],
         listener: EventCallback[T] | None = None,
@@ -94,4 +91,5 @@ class EventRegistry(EventRegistry, NetworkListener, SessionListener):
     ) -> None:
         if not self._events.get(event_type.type):
             raise ValueError(f"Event type {event_type.type} not registered")
+        self._events[event_type.type].listeners.remove(listener)
         self._events[event_type.type].listeners.remove(listener)

@@ -6,8 +6,6 @@ authors = [
     { name = "am230", email = "111672334+am230@users.noreply.github.com" }
 ]
 dependencies = [
-    "fastapi>=0.104.1",
-    "uvicorn[standard]>=0.24.0.post1",
     "sqlitedict>=2.1.0",
 ]
 readme = "README.md"
