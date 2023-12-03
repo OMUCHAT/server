@@ -2,8 +2,6 @@ import asyncio
 
 from omu.connection.address import Address
 
-from omuserver.extension.server.server_extension import ServerExtension
-from omuserver.extension.table import TableExtension
 from omuserver.server.websockets_server import WebsocketsServer
 
 server = WebsocketsServer(
@@ -13,8 +11,6 @@ server = WebsocketsServer(
         secure=False,
     )
 )
-server.extensions.register(TableExtension)
-server.extensions.register(ServerExtension)
 
 
 def main() -> None:

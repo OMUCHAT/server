@@ -1,7 +1,10 @@
-import abc
-from typing import Self
+from __future__ import annotations
 
-from omuserver.server import Server
+import abc
+from typing import TYPE_CHECKING, Self
+
+if TYPE_CHECKING:
+    from omuserver.server import Server
 
 
 class Extension(abc.ABC):

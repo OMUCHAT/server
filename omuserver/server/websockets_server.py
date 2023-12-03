@@ -2,14 +2,14 @@ import asyncio
 from pathlib import Path
 from typing import List, Optional
 
-from omu.connection.address import Address
-from omu.event.events import EVENTS
+from omu.connection import Address
+from omu.event import EVENTS
 
 from omuserver.event.event_registry import EventRegistry
-from omuserver.extension.extension_registry import (
-    ExtensionRegistry,
-    ExtensionRegistryServer,
-)
+from omuserver.extension import ExtensionRegistry, ExtensionRegistryServer
+from omuserver.extension.endpoint import EndpointExtension
+from omuserver.extension.server import ServerExtension
+from omuserver.extension.table import TableExtension
 from omuserver.network import Network
 from omuserver.network.websockets_network import WebsocketsNetwork
 
@@ -32,30 +32,9 @@ class WebsocketsServer(Server):
         self._extensions = extensions or ExtensionRegistryServer(self)
         self._data_dir = data_dir or Path.cwd() / "data"
         self._running = False
-
-    @property
-    def address(self) -> Address:
-        return self._address
-
-    @property
-    def network(self) -> Network:
-        return self._network
-
-    @property
-    def events(self) -> EventRegistry:
-        return self._events
-
-    @property
-    def extensions(self) -> ExtensionRegistry:
-        return self._extensions
-
-    @property
-    def data_path(self) -> Path:
-        return self._data_dir
-
-    @property
-    def running(self) -> bool:
-        return self._running
+        self._endpoint = self.extensions.register(EndpointExtension)
+        self._tables = self.extensions.register(TableExtension)
+        self._server = self.extensions.register(ServerExtension)
 
     def run(self) -> None:
         loop = asyncio.get_event_loop()
@@ -83,3 +62,35 @@ class WebsocketsServer(Server):
 
     def remove_listener(self, listener: ServerListener) -> None:
         self._listeners.remove(listener)
+
+    @property
+    def address(self) -> Address:
+        return self._address
+
+    @property
+    def network(self) -> Network:
+        return self._network
+
+    @property
+    def events(self) -> EventRegistry:
+        return self._events
+
+    @property
+    def extensions(self) -> ExtensionRegistry:
+        return self._extensions
+
+    @property
+    def endpoints(self) -> EndpointExtension:
+        return self._endpoint
+
+    @property
+    def tables(self) -> TableExtension:
+        return self._tables
+
+    @property
+    def data_path(self) -> Path:
+        return self._data_dir
+
+    @property
+    def running(self) -> bool:
+        return self._running

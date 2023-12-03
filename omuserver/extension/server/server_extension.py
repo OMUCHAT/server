@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from loguru import logger
 from omu.extension.server.server_extension import AppsTableType
 
 from omuserver.extension import Extension
 from omuserver.extension.table import TableExtension
 from omuserver.network import NetworkListener
-from omuserver.server import Server
-from omuserver.session.session import Session
+
+if TYPE_CHECKING:
+    from omuserver.server import Server
+    from omuserver.session.session import Session
 
 
 class ServerExtension(Extension, NetworkListener):

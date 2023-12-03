@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from pathlib import Path
-from typing import Any, AsyncIterator, Dict, List
+from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, List
 
 import sqlitedict
 from omu.extension.table.model.table_info import TableInfo
@@ -11,13 +13,17 @@ from omu.extension.table.table_extension import (
     TableItemUpdateEvent,
     TableReq,
 )
-from omu.interface.serializable import Serializable
 
-from omuserver.extension.table.session_table_handler import SessionTableHandler
-from omuserver.server import Server
-from omuserver.session.session import Session
+from .table import TableServer
 
-from .table import TableListener, TableServer
+if TYPE_CHECKING:
+    from omu.interface import Serializable
+
+    from omuserver.server import Server
+    from omuserver.session import Session
+
+    from .session_table_handler import SessionTableHandler
+    from .table import TableListener
 
 
 class SqlitedictTable[T](TableServer[T]):

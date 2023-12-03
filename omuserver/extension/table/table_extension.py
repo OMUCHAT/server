@@ -13,23 +13,25 @@ from omu.extension.table.table_extension import (
     TableItemUpdateEvent,
     TableRegisterEvent,
 )
-from omu.interface.keyable import Keyable
-from omu.interface.serializable import Serializable, Serializer
+from omu.interface import Keyable, Serializable, Serializer
 
-from omuserver.extension.extension import Extension
-from omuserver.extension.table.dict_table import DictTable
-from omuserver.extension.table.sqlitedict_table import SqlitedictTable
-from omuserver.extension.table.table import TableServer
-from omuserver.network.network import NetworkListener
+from omuserver.extension import Extension
+from omuserver.network import NetworkListener
 from omuserver.server import Server, ServerListener
-from omuserver.session.session import Session
+from omuserver.session import Session
+
+from .dict_table import DictTable
+from .sqlitedict_table import SqlitedictTable
+from .table import TableServer
 
 
 class TableExtension(Extension, NetworkListener, ServerListener):
     def __init__(self, server: Server) -> None:
         self._server = server
         self._tables: Dict[str, TableServer] = {}
-        server.network.bind_endpoint(TableItemFetchEndpoint, self._on_table_item_fetch)
+        server.endpoints.bind_endpoint(
+            TableItemFetchEndpoint, self._on_table_item_fetch
+        )
         server.events.register(
             TableRegisterEvent,
             TableItemAddEvent,

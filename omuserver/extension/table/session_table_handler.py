@@ -1,6 +1,7 @@
-from typing import Any, Dict
+from __future__ import annotations
 
-from omu.extension.table.model.table_info import TableInfo
+from typing import TYPE_CHECKING, Any, Dict
+
 from omu.extension.table.table_extension import (
     TableItemAddEvent,
     TableItemClearEvent,
@@ -9,10 +10,14 @@ from omu.extension.table.table_extension import (
     TableItemUpdateEvent,
     TableReq,
 )
-from omu.interface.serializable import Serializable
 
-from omuserver.extension.table.table import TableListener
-from omuserver.session.session import Session
+from omuserver.extension.table import TableListener
+
+if TYPE_CHECKING:
+    from omu.extension.table.model import TableInfo
+    from omu.interface import Serializable
+
+    from omuserver.session import Session
 
 
 class SessionTableHandler(TableListener):

@@ -3,10 +3,8 @@ from __future__ import annotations
 import abc
 from typing import TYPE_CHECKING, Any
 
-from omu.event.event import EventJson
-
 if TYPE_CHECKING:
-    from omu.event.event import EventType
+    from omu.event import EventJson, EventType
     from omu.extension.server import App
 
 

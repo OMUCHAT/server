@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import abc
 from typing import TYPE_CHECKING, Any, Callable, Coroutine, Dict, List
 
 from loguru import logger
@@ -17,26 +16,6 @@ if TYPE_CHECKING:
 type EventCallback[T] = Callable[[Session, T], Coroutine[Any, Any, None]]
 
 
-class EventRegistry(abc.ABC):
-    @abc.abstractmethod
-    def register(self, *types: EventType) -> None:
-        ...
-
-    @abc.abstractmethod
-    def add_listener[T](
-        self,
-        event_type: EventType[T, Any],
-        listener: EventCallback[T] | None = None,
-    ) -> Callable[[EventCallback[T]], None]:
-        ...
-
-    @abc.abstractmethod
-    def remove_listener(
-        self, event_type: EventType, listener: Callable[[Any], None]
-    ) -> None:
-        ...
-
-
 class EventEntry[T, D]:
     def __init__(
         self,
@@ -47,7 +26,7 @@ class EventEntry[T, D]:
         self.listeners = listeners
 
 
-class EventRegistry(EventRegistry, NetworkListener, SessionListener):
+class EventRegistry(NetworkListener, SessionListener):
     def __init__(self, server: Server):
         self._server = server
         self._events: Dict[str, EventEntry] = {}

@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import json
 from pathlib import Path
-from typing import AsyncIterator, Dict
+from typing import TYPE_CHECKING, AsyncIterator, Dict
 
-from omu.extension.table.model.table_info import TableInfo
+from omu.extension.table.model import TableInfo
 from omu.extension.table.table_extension import (
     TableItemAddEvent,
     TableItemClearEvent,
@@ -11,13 +13,17 @@ from omu.extension.table.table_extension import (
     TableItemUpdateEvent,
     TableReq,
 )
-from omu.interface.serializable import Serializable
 
-from omuserver.extension.table.session_table_handler import SessionTableHandler
-from omuserver.server import Server
-from omuserver.session.session import Session, SessionListener
+from omuserver.session import SessionListener
 
+from .session_table_handler import SessionTableHandler
 from .table import TableListener, TableServer
+
+if TYPE_CHECKING:
+    from omu.interface import Serializable
+
+    from omuserver.server import Server
+    from omuserver.session import Session
 
 
 class DictTable[T](TableServer[T], SessionListener):
@@ -112,7 +118,6 @@ class DictTable[T](TableServer[T], SessionListener):
             key: self._serializer.deserialize(value)
             for key, value in json.loads(data).items()
         }
-        pass
 
     @property
     def cache(self) -> Dict[str, T]:

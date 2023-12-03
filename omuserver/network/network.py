@@ -1,25 +1,15 @@
 from __future__ import annotations
 
 import abc
-from typing import Any, Awaitable, Callable
+from typing import TYPE_CHECKING
 
-from omu.endpoint.endpoint import EndpointType
-from omuserver.session.session import Session
+if TYPE_CHECKING:
+    from omuserver.session import Session
 
 
 class Network(abc.ABC):
     @abc.abstractmethod
     async def start(self) -> None:
-        ...
-
-    @abc.abstractmethod
-    def bind_endpoint[
-        ReqData, ResData
-    ](
-        self,
-        type: EndpointType[Any, Any, ReqData, ResData],
-        handler: Callable[[ReqData], Awaitable[ResData]],
-    ) -> None:
         ...
 
     @abc.abstractmethod

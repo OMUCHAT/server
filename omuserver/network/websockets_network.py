@@ -1,13 +1,22 @@
-from typing import Any, Awaitable, Callable, Dict, List
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, List
 
 import websockets
 from loguru import logger
-from omu.endpoint.endpoint import EndpointType
+from omu.extension.endpoint import EndpointType
 
-from omuserver.network.network import Network, NetworkListener
-from omuserver.server import Server, ServerListener
-from omuserver.session.session import Session, SessionListener
+from omuserver.server import ServerListener
+from omuserver.session import SessionListener
 from omuserver.session.websockets_session import WebSocketsSession
+
+from .network import Network
+
+if TYPE_CHECKING:
+    from omuserver.server import Server
+    from omuserver.session import Session
+
+    from .network import NetworkListener
 
 
 class WebsocketsNetwork(Network, ServerListener, SessionListener):
@@ -50,7 +59,6 @@ class WebsocketsNetwork(Network, ServerListener, SessionListener):
     ) -> None:
         session = await WebSocketsSession.create(websocket)
         if session.app.key() in self._sessions:
-            # raise ValueError(f"Session {session.app.key()} already exists")
             logger.warning(f"Session {session.app.key()} already exists")
             await self._sessions[session.app.key()].disconnect()
         self._sessions[session.app.key()] = session

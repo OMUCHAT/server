@@ -1,8 +1,12 @@
-import abc
-from typing import Dict
+from __future__ import annotations
 
-from omuserver.extension.extension import Extension
-from omuserver.server import Server
+import abc
+from typing import TYPE_CHECKING, Dict
+
+if TYPE_CHECKING:
+    from omuserver.server import Server
+
+    from .extension import Extension
 
 
 class ExtensionRegistry(abc.ABC):

@@ -8,8 +8,10 @@ if TYPE_CHECKING:
     from omu.connection import Address
 
     from omuserver.event.event_registry import EventRegistry
+    from omuserver.extension.endpoint import EndpointExtension
     from omuserver.extension.extension_registry import ExtensionRegistry
-    from omuserver.network.network import Network
+    from omuserver.extension.table import TableExtension
+    from omuserver.network import Network
 
 
 class ServerListener:
@@ -39,6 +41,16 @@ class Server(abc.ABC):
     @property
     @abc.abstractmethod
     def extensions(self) -> ExtensionRegistry:
+        ...
+
+    @property
+    @abc.abstractmethod
+    def endpoints(self) -> EndpointExtension:
+        ...
+
+    @property
+    @abc.abstractmethod
+    def tables(self) -> TableExtension:
         ...
 
     @property

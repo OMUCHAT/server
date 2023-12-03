@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import abc
-from typing import Any, AsyncIterator, Dict, List
+from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, List
 
-from omu.interface.serializable import Serializable
+if TYPE_CHECKING:
+    from omu.interface import Serializable
 
-from omuserver.session.session import Session
+    from omuserver.session import Session
 
 
 class TableServer[T](abc.ABC):
