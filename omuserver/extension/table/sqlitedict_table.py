@@ -22,8 +22,9 @@ if TYPE_CHECKING:
     from omuserver.server import Server
     from omuserver.session import Session
 
-    from .session_table_handler import SessionTableHandler
     from .table import TableListener
+
+from .session_table_handler import SessionTableHandler
 
 
 class SqlitedictTable[T](TableServer[T]):
@@ -115,6 +116,8 @@ class SqlitedictTable[T](TableServer[T]):
         self.add_listener(handler)
 
     def detach_session(self, session: Session) -> None:
+        if session not in self._handlers:
+            return
         handler = self._handlers.pop(session)
         self.remove_listener(handler)
 
