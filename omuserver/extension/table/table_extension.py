@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict
+from venv import logger
 
 from omu.extension.table import TableType
 from omu.extension.table.model.table_info import TableInfo
@@ -55,6 +56,9 @@ class TableExtension(Extension, NetworkListener, ServerListener):
         return {key: table.serializer.serialize(item) for key, item in items.items()}
 
     async def _on_table_register(self, session: Session, info: TableInfo) -> None:
+        if info.key() in self._tables:
+            logger.debug(f"Skipping table registration for {info.key()}")
+            return
         table = self.register_from_info(info, Serializer.noop())
         table.attach_session(session)
         await table.load()
