@@ -37,7 +37,11 @@ class TableServer[T](abc.ABC):
         ...
 
     @abc.abstractmethod
-    async def get(self, key: str) -> T | None:
+    async def get(self, key: List[str]) -> T | None:
+        ...
+
+    @abc.abstractmethod
+    async def get_all(self, keys: List[str]) -> Dict[str, T]:
         ...
 
     @abc.abstractmethod

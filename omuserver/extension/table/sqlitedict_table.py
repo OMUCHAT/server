@@ -140,6 +140,17 @@ class SqlitedictTable[T](TableServer[T]):
             return item
         return None
 
+    async def get_all(self, keys: List[str]) -> Dict[str, T]:
+        items: Dict[str, T] = {}
+        for key in keys:
+            if key in self._cache:
+                items[key] = self._cache[key]
+            elif key in self._db:
+                item = self._serializer.deserialize(self._db[key])
+                items[key] = item
+        await self._add_to_cache(items)
+        return items
+
     async def add(self, items: Dict[str, T]) -> None:
         for key, item in items.items():
             self._db[key] = self._serializer.serialize(item)
@@ -177,8 +188,8 @@ class SqlitedictTable[T](TableServer[T]):
         keys = list(self._db.keys())
         if cursor is not None:
             cursor_index = keys.index(cursor)
-            keys = keys[cursor_index + 1 :]
-        for key in keys[:limit]:
+            keys = keys[:cursor_index]
+        for key in keys[-limit:]:
             item = self._serializer.deserialize(self._db[key])
             items[key] = item
 

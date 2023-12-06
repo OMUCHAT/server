@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING, AsyncIterator, Dict
+from typing import TYPE_CHECKING, AsyncIterator, Dict, List
 
 from omu.extension.table.model import TableInfo
 from omu.extension.table.table_extension import (
@@ -94,14 +94,12 @@ class DictTable[T](TableServer[T], SessionListener):
 
     async def save(self) -> None:
         path = self._path / "data.json"
+        data = {
+            key: self._serializer.serialize(value) for key, value in self._cache.items()
+        }
+
         path.write_text(
-            json.dumps(
-                {
-                    key: self._serializer.serialize(value)
-                    for key, value in self._cache.items()
-                },
-                ensure_ascii=False,
-            ),
+            json.dumps(data, ensure_ascii=False),
             encoding="utf-8",
         )
 
@@ -141,6 +139,13 @@ class DictTable[T](TableServer[T], SessionListener):
     async def get(self, key: str) -> T | None:
         return self._cache.get(key, None)
 
+    async def get_all(self, keys: List[str]) -> Dict[str, T]:
+        items = {}
+        for key in keys:
+            if key in self._cache:
+                items[key] = self._cache[key]
+        return items
+
     async def add(self, items: Dict[str, T]) -> None:
         self._cache.update(items)
         for listener in self._listeners:
@@ -174,8 +179,8 @@ class DictTable[T](TableServer[T], SessionListener):
         keys = list(self._cache.keys())
         if cursor is not None:
             cursor_index = keys.index(cursor)
-            keys = keys[cursor_index:]
-        for key in keys[:limit]:
+            keys = keys[:cursor_index]
+        for key in keys[-limit:]:
             items[key] = self._cache[key]
         return items
 

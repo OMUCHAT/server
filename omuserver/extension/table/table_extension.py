@@ -10,9 +10,14 @@ from omu.extension.table.table_extension import (
     TableItemAddEvent,
     TableItemClearEvent,
     TableItemFetchEndpoint,
+    TableItemGetEndpoint,
     TableItemRemoveEvent,
+    TableItemSizeEndpoint,
+    TableItemsReq,
     TableItemUpdateEvent,
+    TableKeysReq,
     TableRegisterEvent,
+    TableReq,
 )
 from omu.interface import Keyable, Serializable, Serializer
 
@@ -30,9 +35,12 @@ class TableExtension(Extension, NetworkListener, ServerListener):
     def __init__(self, server: Server) -> None:
         self._server = server
         self._tables: Dict[str, TableServer] = {}
+        server.endpoints.bind_endpoint(TableItemGetEndpoint, self._on_table_item_get)
         server.endpoints.bind_endpoint(
             TableItemFetchEndpoint, self._on_table_item_fetch
         )
+        server.endpoints.bind_endpoint(TableItemSizeEndpoint, self._on_table_item_size)
+
         server.events.register(
             TableRegisterEvent,
             TableItemAddEvent,
@@ -41,12 +49,28 @@ class TableExtension(Extension, NetworkListener, ServerListener):
             TableItemClearEvent,
         )
         server.events.add_listener(TableRegisterEvent, self._on_table_register)
+        server.events.add_listener(TableItemAddEvent, self._on_table_item_add)
+        server.events.add_listener(TableItemUpdateEvent, self._on_table_item_update)
+        server.events.add_listener(TableItemRemoveEvent, self._on_table_item_remove)
+        server.events.add_listener(TableItemClearEvent, self._on_table_item_clear)
         server.network.add_listener(self)
         server.add_listener(self)
 
     @classmethod
     def create(cls, server: Server) -> TableExtension:
         return cls(server)
+
+    async def _on_table_item_get(self, req: TableKeysReq) -> TableItemsReq:
+        table = self._tables.get(req["type"], None)
+        if table is None:
+            return TableItemsReq(type=req["type"], items={})
+        items = await table.get_all(req["items"])
+        return TableItemsReq(
+            type=req["type"],
+            items={
+                key: table.serializer.serialize(item) for key, item in items.items()
+            },
+        )
 
     async def _on_table_item_fetch(self, req: TableFetchReq) -> Dict[str, Any]:
         table = self._tables.get(req["type"], None)
@@ -55,13 +79,49 @@ class TableExtension(Extension, NetworkListener, ServerListener):
         items = await table.fetch(req["limit"], req.get("cursor"))
         return {key: table.serializer.serialize(item) for key, item in items.items()}
 
+    async def _on_table_item_size(self, req: TableReq) -> int:
+        table = self._tables.get(req["type"], None)
+        if table is None:
+            return 0
+        return await table.size()
+
     async def _on_table_register(self, session: Session, info: TableInfo) -> None:
         if info.key() in self._tables:
             logger.debug(f"Skipping table registration for {info.key()}")
+            table = self._tables[info.key()]
+            table.attach_session(session)
             return
         table = self.register_from_info(info, Serializer.noop())
         table.attach_session(session)
         await table.load()
+
+    async def _on_table_item_add(self, session: Session, event: TableItemsReq) -> None:
+        table = self._tables.get(event["type"], None)
+        if table is None:
+            return
+        await table.add(event["items"])
+
+    async def _on_table_item_update(
+        self, session: Session, event: TableItemsReq
+    ) -> None:
+        table = self._tables.get(event["type"], None)
+        if table is None:
+            return
+        await table.set(event["items"])
+
+    async def _on_table_item_remove(
+        self, session: Session, event: TableItemsReq
+    ) -> None:
+        table = self._tables.get(event["type"], None)
+        if table is None:
+            return
+        await table.remove(list(event["items"].keys()))
+
+    async def _on_table_item_clear(self, session: Session, event: TableReq) -> None:
+        table = self._tables.get(event["type"], None)
+        if table is None:
+            return
+        await table.clear()
 
     async def on_disconnected(self, session: Session) -> None:
         for table in self._tables.values():
