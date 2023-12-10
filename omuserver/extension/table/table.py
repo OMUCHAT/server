@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from omuserver.session import Session
 
 
-class TableServer[T](abc.ABC):
+class ServerTable[T](abc.ABC):
     @property
     @abc.abstractmethod
     def serializer(self) -> Serializable[T, Any]:
@@ -37,7 +37,7 @@ class TableServer[T](abc.ABC):
         ...
 
     @abc.abstractmethod
-    async def get(self, key: List[str]) -> T | None:
+    async def get(self, key: str) -> T | None:
         ...
 
     @abc.abstractmethod
@@ -49,7 +49,7 @@ class TableServer[T](abc.ABC):
         ...
 
     @abc.abstractmethod
-    async def set(self, items: Dict[str, T]) -> None:
+    async def update(self, items: Dict[str, T]) -> None:
         ...
 
     @abc.abstractmethod

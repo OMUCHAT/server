@@ -40,7 +40,10 @@ class WebSocketsSession(Session):
                         event = EventJson(**json.loads(message))
                         for listener in self._listeners:
                             await listener.on_event(self, event)
-                except exceptions.ConnectionClosedOK:
+                except (
+                    exceptions.ConnectionClosedOK,
+                    exceptions.ConnectionClosedError,
+                ):
                     break
         finally:
             await self.disconnect()

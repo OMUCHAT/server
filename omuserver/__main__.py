@@ -1,16 +1,15 @@
 import asyncio
 
-from omu.connection.address import Address
+from omu.connection import Address
 
 from omuserver.server.websockets_server import WebsocketsServer
 
-server = WebsocketsServer(
-    Address(
-        host="0.0.0.0",
-        port=26423,
-        secure=False,
-    )
+address = Address(
+    host="0.0.0.0",
+    port=26423,
+    secure=False,
 )
+server = WebsocketsServer(address)
 
 
 def main() -> None:

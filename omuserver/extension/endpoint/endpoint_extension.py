@@ -23,7 +23,7 @@ from omuserver.server.server import ServerListener
 from omuserver.session import Session
 
 
-class ServerEndpoint(abc.ABC):
+class Endpoint(abc.ABC):
     @property
     @abc.abstractmethod
     def info(self) -> EndpointInfo:
@@ -34,7 +34,7 @@ class ServerEndpoint(abc.ABC):
         ...
 
 
-class SessionEndpoint(ServerEndpoint):
+class SessionEndpoint(Endpoint):
     def __init__(self, session: Session, info: EndpointInfo) -> None:
         self._session = session
         self._info = info
@@ -50,7 +50,7 @@ class SessionEndpoint(ServerEndpoint):
 type Coro[T, R] = Callable[[T], Coroutine[Any, Any, R]]
 
 
-class CallbackEndpoint[Req, Res, ReqData, ResData](ServerEndpoint):
+class ServerEndpoint[Req, Res, ReqData, ResData](Endpoint):
     def __init__(
         self,
         server: Server,
@@ -101,7 +101,7 @@ class EndpointExtension(Extension, ServerListener):
     def __init__(self, server: Server) -> None:
         self._server = server
         self._server.add_listener(self)
-        self._endpoints: Dict[str, ServerEndpoint] = {}
+        self._endpoints: Dict[str, Endpoint] = {}
         self._calls: Dict[str, EndpointCall] = {}
         server.events.register(
             EndpointRegisterEvent,
@@ -120,7 +120,7 @@ class EndpointExtension(Extension, ServerListener):
     def bind_endpoint[Req, Res](
         self, type: EndpointType[Req, Res, Any, Any], callback: Coro[Req, Res]
     ) -> None:
-        endpoint = CallbackEndpoint(self._server, type, callback)
+        endpoint = ServerEndpoint(self._server, type, callback)
         self._endpoints[type.info.key()] = endpoint
 
     async def _on_endpoint_call(self, session: Session, req: EndpointDataReq) -> None:
@@ -162,7 +162,7 @@ class EndpointExtension(Extension, ServerListener):
 
     async def _get_endpoint(
         self, req: EndpointDataReq, session: Session
-    ) -> ServerEndpoint | None:
+    ) -> Endpoint | None:
         if await self.endpoints.get(req["type"]) is None:
             await session.send(
                 EndpointErrorEvent,
@@ -190,7 +190,7 @@ class EndpointExtension(Extension, ServerListener):
 
     async def on_initialized(self) -> None:
         tables = self._server.extensions.get(TableExtension)
-        self.endpoints = tables.register(EndpointsTableType)
+        self.endpoints = tables.register_table(EndpointsTableType)
         await self.endpoints.load()
         for key, endpoint in self._endpoints.items():
             await self.endpoints.add({key: endpoint.info})

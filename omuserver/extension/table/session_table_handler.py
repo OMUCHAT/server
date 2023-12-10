@@ -66,3 +66,8 @@ class SessionTableHandler(TableListener):
 
     async def on_clear(self) -> None:
         await self._session.send(TableItemClearEvent, TableReq(type=self._info.key()))
+
+    def __repr__(self) -> str:
+        return (
+            f"<SessionTableHandler info={self._info.key()} session={self._session.app}>"
+        )

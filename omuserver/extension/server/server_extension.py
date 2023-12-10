@@ -19,7 +19,7 @@ class ServerExtension(Extension, NetworkListener):
         self._server = server
         server.network.add_listener(self)
         table = server.extensions.get(TableExtension)
-        self.apps = table.register(AppsTableType)
+        self.apps = table.register_table(AppsTableType)
         pass
 
     @classmethod

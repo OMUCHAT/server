@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 from typing import TYPE_CHECKING, AsyncIterator, Dict, List
@@ -17,7 +18,7 @@ from omu.extension.table.table_extension import (
 from omuserver.session import SessionListener
 
 from .session_table_handler import SessionTableHandler
-from .table import TableListener, TableServer
+from .table import ServerTable, TableListener
 
 if TYPE_CHECKING:
     from omu.interface import Serializable
@@ -26,7 +27,7 @@ if TYPE_CHECKING:
     from omuserver.session import Session
 
 
-class DictTable[T](TableServer[T], SessionListener):
+class DictTable[T](ServerTable[T], SessionListener):
     def __init__(
         self,
         server: Server,
@@ -41,6 +42,8 @@ class DictTable[T](TableServer[T], SessionListener):
         self._cache: Dict[str, T] = {}
         self._listeners: list[TableListener[T]] = []
         self._handlers: Dict[Session, SessionTableHandler] = {}
+        self._changed = False
+        self._save_task: asyncio.Task | None = None
         server.events.add_listener(
             TableItemAddEvent,
             self._on_table_item_add,
@@ -73,7 +76,7 @@ class DictTable[T](TableServer[T], SessionListener):
     ) -> None:
         if items["type"] != self._info.key():
             return
-        await self.set(
+        await self.update(
             {
                 key: self._serializer.deserialize(value)
                 for key, value in items["items"].items()
@@ -151,12 +154,14 @@ class DictTable[T](TableServer[T], SessionListener):
         for listener in self._listeners:
             await listener.on_cache_update(self._cache)
             await listener.on_add(items)
+        self.mark_changed()
 
-    async def set(self, items: Dict[str, T]) -> None:
+    async def update(self, items: Dict[str, T]) -> None:
         self._cache.update(items)
         for listener in self._listeners:
             await listener.on_cache_update(self._cache)
             await listener.on_update(items)
+        self.mark_changed()
 
     async def remove(self, items: list[str]) -> None:
         removed_items: Dict[str, T] = {}
@@ -167,12 +172,14 @@ class DictTable[T](TableServer[T], SessionListener):
         for listener in self._listeners:
             await listener.on_cache_update(self._cache)
             await listener.on_remove(removed_items)
+        self.mark_changed()
 
     async def clear(self) -> None:
         self._cache.clear()
         for listener in self._listeners:
             await listener.on_cache_update(self._cache)
             await listener.on_clear()
+        self.mark_changed()
 
     async def fetch(self, limit: int = 100, cursor: str | None = None) -> Dict[str, T]:
         items = {}
@@ -202,3 +209,17 @@ class DictTable[T](TableServer[T], SessionListener):
 
     def remove_listener(self, listener: TableListener[T]) -> None:
         self._listeners.remove(listener)
+
+    async def save_task(self) -> None:
+        while self._changed:
+            self._changed = False
+            await self.save()
+            await asyncio.sleep(30)
+        self._save_task = None
+
+    def mark_changed(self) -> None:
+        if self._save_task is not None:
+            return
+        self._changed = True
+        if self._save_task is None:
+            self._save_task = asyncio.create_task(self.save_task())

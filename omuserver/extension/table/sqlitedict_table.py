@@ -14,7 +14,7 @@ from omu.extension.table.table_extension import (
     TableReq,
 )
 
-from .table import TableServer
+from .table import ServerTable
 
 if TYPE_CHECKING:
     from omu.interface import Serializable
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 from .session_table_handler import SessionTableHandler
 
 
-class SqlitedictTable[T](TableServer[T]):
+class SqlitedictTable[T](ServerTable[T]):
     def __init__(
         self,
         server: Server,
@@ -77,7 +77,7 @@ class SqlitedictTable[T](TableServer[T]):
     ) -> None:
         if items["type"] != self._info.key():
             return
-        await self.set(
+        await self.update(
             {
                 key: self._serializer.deserialize(item)
                 for key, item in items["items"].items()
@@ -111,6 +111,8 @@ class SqlitedictTable[T](TableServer[T]):
         return self._serializer
 
     def attach_session(self, session: Session) -> None:
+        if session in self._handlers:
+            raise ValueError("Session already attached")
         handler = SessionTableHandler(self._info, session, self._serializer)
         self._handlers[session] = handler
         self.add_listener(handler)
@@ -158,7 +160,7 @@ class SqlitedictTable[T](TableServer[T]):
         for listener in self._listeners:
             await listener.on_add(items)
 
-    async def set(self, items: Dict[str, T]) -> None:
+    async def update(self, items: Dict[str, T]) -> None:
         for key, item in items.items():
             self._db[key] = self._serializer.serialize(item)
         await self._add_to_cache(items)
