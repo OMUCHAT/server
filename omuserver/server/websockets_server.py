@@ -2,6 +2,7 @@ import asyncio
 from pathlib import Path
 from typing import List, Optional
 
+from loguru import logger
 from omu.connection import Address
 from omu.event import EVENTS
 
@@ -40,11 +41,17 @@ class WebsocketsServer(Server):
         loop = asyncio.get_event_loop()
 
         try:
+            loop.set_exception_handler(self.handle_exception)
             loop.create_task(self.start())
             loop.run_forever()
         finally:
             loop.close()
             asyncio.run(self.shutdown())
+
+    def handle_exception(self, loop: asyncio.AbstractEventLoop, context: dict) -> None:
+        logger.error(context["message"])
+        exception = context.get("exception")
+        logger.error(exception)
 
     async def start(self) -> None:
         self._running = True
