@@ -5,14 +5,6 @@ from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, List
 
 import sqlitedict
 from omu.extension.table.model.table_info import TableInfo
-from omu.extension.table.table_extension import (
-    TableItemAddEvent,
-    TableItemClearEvent,
-    TableItemRemoveEvent,
-    TableItemsReq,
-    TableItemUpdateEvent,
-    TableReq,
-)
 
 from .table import ServerTable
 
@@ -45,56 +37,6 @@ class SqlitedictTable[T](ServerTable[T]):
         self._cache_size = info.cache_size or 1000
         self._listeners: List[TableListener] = []
         self._handlers: Dict[Session, SessionTableHandler] = {}
-        server.events.add_listener(
-            TableItemAddEvent,
-            self._on_table_item_add,
-        )
-        server.events.add_listener(
-            TableItemUpdateEvent,
-            self._on_table_item_update,
-        )
-        server.events.add_listener(
-            TableItemRemoveEvent,
-            self._on_table_item_remove,
-        )
-        server.events.add_listener(
-            TableItemClearEvent,
-            self._on_table_item_clear,
-        )
-
-    async def _on_table_item_add(self, session: Session, items: TableItemsReq) -> None:
-        if items["type"] != self._info.key():
-            return
-        await self.add(
-            {
-                key: self._serializer.deserialize(item)
-                for key, item in items["items"].items()
-            }
-        )
-
-    async def _on_table_item_update(
-        self, session: Session, items: TableItemsReq
-    ) -> None:
-        if items["type"] != self._info.key():
-            return
-        await self.update(
-            {
-                key: self._serializer.deserialize(item)
-                for key, item in items["items"].items()
-            }
-        )
-
-    async def _on_table_item_remove(
-        self, session: Session, items: TableItemsReq
-    ) -> None:
-        if items["type"] != self._info.key():
-            return
-        await self.remove(list(items["items"].keys()))
-
-    async def _on_table_item_clear(self, session: Session, req: TableReq) -> None:
-        if req["type"] != self._info.key():
-            return
-        await self.clear()
 
     async def save(self) -> None:
         self._db.commit()

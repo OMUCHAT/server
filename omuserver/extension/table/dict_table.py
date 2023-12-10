@@ -6,14 +6,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, AsyncIterator, Dict, List
 
 from omu.extension.table.model import TableInfo
-from omu.extension.table.table_extension import (
-    TableItemAddEvent,
-    TableItemClearEvent,
-    TableItemRemoveEvent,
-    TableItemsReq,
-    TableItemUpdateEvent,
-    TableReq,
-)
 
 from omuserver.session import SessionListener
 
@@ -44,56 +36,6 @@ class DictTable[T](ServerTable[T], SessionListener):
         self._handlers: Dict[Session, SessionTableHandler] = {}
         self._changed = False
         self._save_task: asyncio.Task | None = None
-        server.events.add_listener(
-            TableItemAddEvent,
-            self._on_table_item_add,
-        )
-        server.events.add_listener(
-            TableItemUpdateEvent,
-            self._on_table_item_update,
-        )
-        server.events.add_listener(
-            TableItemRemoveEvent,
-            self._on_table_item_remove,
-        )
-        server.events.add_listener(
-            TableItemClearEvent,
-            self._on_table_item_clear,
-        )
-
-    async def _on_table_item_add(self, session: Session, items: TableItemsReq) -> None:
-        if items["type"] != self._info.key():
-            return
-        await self.add(
-            {
-                key: self._serializer.deserialize(value)
-                for key, value in items["items"].items()
-            }
-        )
-
-    async def _on_table_item_update(
-        self, session: Session, items: TableItemsReq
-    ) -> None:
-        if items["type"] != self._info.key():
-            return
-        await self.update(
-            {
-                key: self._serializer.deserialize(value)
-                for key, value in items["items"].items()
-            }
-        )
-
-    async def _on_table_item_remove(
-        self, session: Session, items: TableItemsReq
-    ) -> None:
-        if items["type"] != self._info.key():
-            return
-        await self.remove(list(items["items"].keys()))
-
-    async def _on_table_item_clear(self, session: Session, req: TableReq) -> None:
-        if req["type"] != self._info.key():
-            return
-        await self.clear()
 
     async def save(self) -> None:
         path = self._path / "data.json"
@@ -210,16 +152,7 @@ class DictTable[T](ServerTable[T], SessionListener):
     def remove_listener(self, listener: TableListener[T]) -> None:
         self._listeners.remove(listener)
 
-    async def save_task(self) -> None:
-        while self._changed:
-            self._changed = False
-            await self.save()
-            await asyncio.sleep(30)
-        self._save_task = None
-
     def mark_changed(self) -> None:
         if self._save_task is not None:
-            return
+            self._save_task.cancel()
         self._changed = True
-        if self._save_task is None:
-            self._save_task = asyncio.create_task(self.save_task())
