@@ -11,7 +11,7 @@ from omu.extension.table.table_extension import (
     TableReq,
 )
 
-from omuserver.extension.table import TableListener
+from .server_table import TableListener
 
 if TYPE_CHECKING:
     from omu.extension.table.model import TableInfo

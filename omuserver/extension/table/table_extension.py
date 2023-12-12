@@ -28,9 +28,9 @@ from omuserver.network import NetworkListener
 from omuserver.server import Server, ServerListener
 from omuserver.session import Session
 
-from .dict_table import DictTable
-from .sqlitedict_table import SqlitedictTable
-from .table import ServerTable
+from .cached_table import CachedTable
+from .server_table import ServerTable
+from .table import DictTable, SqliteTable
 
 
 class TableExtension(Extension, NetworkListener, ServerListener):
@@ -136,11 +136,12 @@ class TableExtension(Extension, NetworkListener, ServerListener):
     def create_table(self, info, serializer):
         path = self.get_table_path(info)
         if info.use_database:
-            table = SqlitedictTable(self._server, path, info, serializer)
+            table = SqliteTable.create(path)
         else:
-            table = DictTable(self._server, path, info, serializer)
-        self._tables[info.key()] = table
-        return table
+            table = DictTable.create(path)
+        server_table = CachedTable(self._server, info, serializer, table)
+        self._tables[info.key()] = server_table
+        return server_table
 
     def register_table[T: Keyable, D](
         self, table_type: TableType[T, Any]
@@ -161,4 +162,5 @@ class TableExtension(Extension, NetworkListener, ServerListener):
 
     async def on_shutdown(self) -> None:
         for table in self._tables.values():
+            await table.save()
             await table.save()

@@ -57,6 +57,8 @@ class WebSocketsSession(Session):
             await listener.on_disconnected(self)
 
     async def send[T](self, type: EventType[Any, T], data: T) -> None:
+        if not self.socket.open:
+            return
         await self.socket.send(
             json.dumps(
                 {
