@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import abc
-from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, List, Union
+from typing import TYPE_CHECKING, AsyncIterator, Dict, List, Union
 
 if TYPE_CHECKING:
     from omu.interface import Serializable
@@ -14,7 +14,7 @@ type Json = Union[str, int, float, bool, None, Dict[str, Json], List[Json]]
 class ServerTable[T](abc.ABC):
     @property
     @abc.abstractmethod
-    def serializer(self) -> Serializable[T, Any]:
+    def serializer(self) -> Serializable[T, Json]:
         ...
 
     @property
@@ -31,7 +31,15 @@ class ServerTable[T](abc.ABC):
         ...
 
     @abc.abstractmethod
-    async def save(self) -> None:
+    def attach_proxy_session(self, session: Session) -> None:
+        ...
+
+    @abc.abstractmethod
+    async def proxy(self, session: Session, key: int, items: Dict[str, T]) -> int:
+        ...
+
+    @abc.abstractmethod
+    async def store(self) -> None:
         ...
 
     @abc.abstractmethod

@@ -20,6 +20,10 @@ class WebSocketsSession(Session):
     def app(self) -> App:
         return self._app
 
+    @property
+    def closed(self) -> bool:
+        return not self.socket.open
+
     @classmethod
     async def create(cls, socket: WebSocketServerProtocol) -> WebSocketsSession:
         event = EventJson.from_json_as(AppJson, json.loads(await socket.recv()))
@@ -36,10 +40,9 @@ class WebSocketsSession(Session):
         try:
             while True:
                 try:
-                    async for message in self.socket:
-                        event = EventJson(**json.loads(message))
-                        for listener in self._listeners:
-                            await listener.on_event(self, event)
+                    event = await self._receive()
+                    for listener in self._listeners:
+                        await listener.on_event(self, event)
                 except (
                     exceptions.ConnectionClosedOK,
                     exceptions.ConnectionClosedError,
@@ -58,7 +61,7 @@ class WebSocketsSession(Session):
 
     async def send[T](self, type: EventType[Any, T], data: T) -> None:
         if not self.socket.open:
-            return
+            raise ValueError("Socket is closed")
         await self.socket.send(
             json.dumps(
                 {

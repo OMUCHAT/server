@@ -14,6 +14,11 @@ class Session(abc.ABC):
     def app(self) -> App:
         ...
 
+    @property
+    @abc.abstractmethod
+    def closed(self) -> bool:
+        ...
+
     @abc.abstractmethod
     async def disconnect(self) -> None:
         ...

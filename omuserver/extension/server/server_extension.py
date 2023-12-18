@@ -31,11 +31,11 @@ class ServerExtension(Extension, NetworkListener, ServerListener):
         await self.apps.clear()
 
     async def on_connected(self, session: Session) -> None:
-        logger.info(f"Connected: {session.app.name}")
+        logger.info(f"Connected: {session.app.key()}")
         await self.apps.add({session.app.key(): session.app})
 
     async def on_disconnected(self, session: Session) -> None:
-        logger.info(f"Disconnected: {session.app.name}")
+        logger.info(f"Disconnected: {session.app.key()}")
         await self.apps.remove([session.app.key()])
 
     def stop(self) -> None:

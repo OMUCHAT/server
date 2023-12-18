@@ -47,7 +47,7 @@ class SessionEndpoint(Endpoint):
         await self._session.send(EndpointCallEvent, data)
 
 
-type Coro[T, R] = Callable[[T], Coroutine[Any, Any, R]]
+type Coro[**P, T] = Callable[P, Coroutine[Any, Any, T]]
 
 
 class ServerEndpoint[Req, Res, ReqData, ResData](Endpoint):
@@ -55,7 +55,7 @@ class ServerEndpoint[Req, Res, ReqData, ResData](Endpoint):
         self,
         server: Server,
         endpoint: EndpointType[Req, Res, ReqData, ResData],
-        callback: Coro[Req, Res],
+        callback: Coro[[Session, Req], Res],
     ) -> None:
         self._server = server
         self._endpoint = endpoint
@@ -68,7 +68,7 @@ class ServerEndpoint[Req, Res, ReqData, ResData](Endpoint):
     async def call(self, data: EndpointDataReq, session: Session) -> None:
         try:
             req = self._endpoint.request_serializer.deserialize(data["data"])
-            res = await self._callback(req)
+            res = await self._callback(session, req)
             json = self._endpoint.response_serializer.serialize(res)
             await session.send(
                 EndpointReceiveEvent,
@@ -118,14 +118,21 @@ class EndpointExtension(Extension, ServerListener):
         await self.endpoints.add({info.key(): info})
 
     def bind_endpoint[Req, Res](
-        self, type: EndpointType[Req, Res, Any, Any], callback: Coro[Req, Res]
+        self,
+        type: EndpointType[Req, Res, Any, Any],
+        callback: Coro[[Session, Req], Res],
     ) -> None:
+        if type.info.key() in self._endpoints:
+            raise ValueError(f"Endpoint {type.info.key()} already bound")
         endpoint = ServerEndpoint(self._server, type, callback)
         self._endpoints[type.info.key()] = endpoint
 
     async def _on_endpoint_call(self, session: Session, req: EndpointDataReq) -> None:
         endpoint = await self._get_endpoint(req, session)
         if endpoint is None:
+            logger.warning(
+                f"{session.app.name} tried to call unknown endpoint {req['type']}"
+            )
             return
         await endpoint.call(req, session)
         self._calls[f"{req['type']}:{req['key']}"] = EndpointCall(session, req)
@@ -194,4 +201,4 @@ class EndpointExtension(Extension, ServerListener):
         await self.endpoints.load()
         for key, endpoint in self._endpoints.items():
             await self.endpoints.add({key: endpoint.info})
-        await self.endpoints.save()
+        await self.endpoints.store()

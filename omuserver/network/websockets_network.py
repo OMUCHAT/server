@@ -57,7 +57,11 @@ class WebsocketsNetwork(Network, ServerListener, SessionListener):
     async def _websocket_handler(
         self, websocket: websockets.WebSocketServerProtocol
     ) -> None:
-        session = await WebSocketsSession.create(websocket)
+        try:
+            session = await WebSocketsSession.create(websocket)
+        except websockets.exceptions.ConnectionClosedError:
+            logger.warning("Connection closed before session could be created")
+            return
         if session.app.key() in self._sessions:
             logger.warning(f"Session {session.app.key()} already exists")
             await self._sessions[session.app.key()].disconnect()

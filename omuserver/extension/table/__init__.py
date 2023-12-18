@@ -1,9 +1,9 @@
-from .table import DictTable, SqliteTable, Table
+from .adapters import DictTableAdapter, SqliteTableAdapter, TableAdapter
 from .table_extension import TableExtension
 
 __all__ = [
-    "DictTable",
-    "SqliteTable",
-    "Table",
+    "DictTableAdapter",
+    "SqliteTableAdapter",
+    "TableAdapter",
     "TableExtension",
 ]

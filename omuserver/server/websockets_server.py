@@ -9,6 +9,7 @@ from omu.event import EVENTS
 from omuserver.event.event_registry import EventRegistry
 from omuserver.extension import ExtensionRegistry, ExtensionRegistryServer
 from omuserver.extension.endpoint import EndpointExtension
+from omuserver.extension.registry.registry_extension import RegistryExtension
 from omuserver.extension.server import ServerExtension
 from omuserver.extension.table import TableExtension
 from omuserver.network import Network
@@ -36,6 +37,7 @@ class WebsocketsServer(Server):
         self._endpoint = self.extensions.register(EndpointExtension)
         self._tables = self.extensions.register(TableExtension)
         self._server = self.extensions.register(ServerExtension)
+        self._registry = self.extensions.register(RegistryExtension)
 
     def run(self) -> None:
         loop = asyncio.get_event_loop()
@@ -51,7 +53,8 @@ class WebsocketsServer(Server):
     def handle_exception(self, loop: asyncio.AbstractEventLoop, context: dict) -> None:
         logger.error(context["message"])
         exception = context.get("exception")
-        logger.error(exception)
+        if exception:
+            raise exception
 
     async def start(self) -> None:
         self._running = True

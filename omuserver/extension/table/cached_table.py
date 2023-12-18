@@ -4,12 +4,13 @@ import asyncio
 from typing import TYPE_CHECKING, AsyncIterator, Dict, List
 
 from omu.extension.table.model import TableInfo
+from omu.extension.table.table_extension import TableProxyEvent, TableProxyEventData
 
 from omuserver.session import SessionListener
 
+from .adapters.tableadapter import Json, TableAdapter
 from .server_table import ServerTable, TableListener
-from .session_table_handler import SessionTableHandler
-from .table import Json, Table
+from .session_table_handler import SessionTableListener
 
 if TYPE_CHECKING:
     from omu.interface import Serializable
@@ -24,7 +25,7 @@ class CachedTable[T](ServerTable[T], SessionListener):
         server: Server,
         info: TableInfo,
         serializer: Serializable[T, Json],
-        table: Table,
+        table: TableAdapter,
     ):
         self._server = server
         self._info = info
@@ -35,15 +36,19 @@ class CachedTable[T](ServerTable[T], SessionListener):
         self._cache: Dict[str, T] = {}
         self._cache_size = info.cache_size or 512
         self._listeners: list[TableListener[T]] = []
-        self._handlers: Dict[Session, SessionTableHandler] = {}
+        self._sessions: Dict[Session, SessionTableListener] = {}
+        self._proxy_sessions: List[Session] = []
         self._changed = False
+        self._key = 0
         self._save_task: asyncio.Task | None = None
 
-    async def save(self) -> None:
-        await self._table.save()
+    async def store(self) -> None:
+        await self._table.store()
 
     async def load(self) -> None:
-        await self._table.load()
+        if self._changed:
+            await self.store()
+        await self._table.store()
 
     @property
     def cache(self) -> Dict[str, T]:
@@ -54,15 +59,25 @@ class CachedTable[T](ServerTable[T], SessionListener):
         return self._serializer
 
     def attach_session(self, session: Session) -> None:
-        handler = SessionTableHandler(self._info, session, self._serializer)
-        self._handlers[session] = handler
+        if session in self._sessions:
+            return
+        handler = SessionTableListener(self._info, session, self._serializer)
+        self._sessions[session] = handler
         self.add_listener(handler)
+        session.add_listener(self)
 
     def detach_session(self, session: Session) -> None:
-        if session not in self._handlers:
-            return
-        handler = self._handlers.pop(session)
-        self.remove_listener(handler)
+        if session in self._proxy_sessions:
+            self._proxy_sessions.remove(session)
+        if session in self._sessions:
+            handler = self._sessions.pop(session)
+            self.remove_listener(handler)
+
+    async def on_disconnected(self, session: Session) -> None:
+        self.detach_session(session)
+
+    def attach_proxy_session(self, session: Session) -> None:
+        self._proxy_sessions.append(session)
 
     async def get(self, key: str) -> T | None:
         if key in self._cache:
@@ -89,12 +104,57 @@ class CachedTable[T](ServerTable[T], SessionListener):
         return items
 
     async def add(self, items: Dict[str, T]) -> None:
+        if len(self._proxy_sessions) > 0:
+            await self.send_proxy_event(items)
+            return
         await self._table.set_all(
             {key: self._serializer.serialize(value) for key, value in items.items()}
         )
         for listener in self._listeners:
             await listener.on_add(items)
+        await self.update_cache(items)
         self.mark_changed()
+
+    async def send_proxy_event(self, items: Dict[str, T]) -> None:
+        session = self._proxy_sessions[0]
+        self._key += 1
+        await session.send(
+            TableProxyEvent,
+            TableProxyEventData(
+                items={
+                    key: self._serializer.serialize(value)
+                    for key, value in items.items()
+                },
+                type=self._info.key(),
+                key=self._key,
+            ),
+        )
+
+    async def proxy(self, session: Session, key: int, items: Dict[str, T]) -> int:
+        if key != self._key:
+            return 0
+        if session not in self._proxy_sessions:
+            raise ValueError("Session not in proxy sessions")
+        index = self._proxy_sessions.index(session)
+        if index == len(self._proxy_sessions) - 1:
+            await self._table.set_all(
+                {key: self._serializer.serialize(value) for key, value in items.items()}
+            )
+            for listener in self._listeners:
+                await listener.on_add(items)
+            await self.update_cache(items)
+            self.mark_changed()
+            return 0
+        session = self._proxy_sessions[index + 1]
+        await session.send(
+            TableProxyEvent,
+            TableProxyEventData(
+                items=items,
+                type=self._info.key(),
+                key=self._key,
+            ),
+        )
+        return self._key
 
     async def update(self, items: Dict[str, T]) -> None:
         await self._table.set_all(
@@ -102,6 +162,7 @@ class CachedTable[T](ServerTable[T], SessionListener):
         )
         for listener in self._listeners:
             await listener.on_update(items)
+        await self.update_cache(items)
         self.mark_changed()
 
     async def remove(self, items: list[str]) -> None:
@@ -110,6 +171,9 @@ class CachedTable[T](ServerTable[T], SessionListener):
             key: self._serializer.deserialize(value) for key, value in data.items()
         }
         await self._table.remove_all(items)
+        for key in items:
+            if key in self._cache:
+                del self._cache[key]
         for listener in self._listeners:
             await listener.on_remove(removed)
 
@@ -124,16 +188,10 @@ class CachedTable[T](ServerTable[T], SessionListener):
         if limit == 0:
             return {}
         if cursor is None:
-            cursor = (
-                await self._table.first() if limit > 0 else await self._table.last()
-            )
+            cursor = await self._table.last()
         if cursor is None:
             return {}
-        data = (
-            await self._table.fetch_forward(limit, cursor)
-            if limit > 0
-            else await self._table.fetch_backward(limit, cursor)
-        )
+        data = await self._table.fetch_backward(limit, cursor)
         items = {
             key: self._serializer.deserialize(value) for key, value in data.items()
         }
@@ -162,7 +220,7 @@ class CachedTable[T](ServerTable[T], SessionListener):
     async def save_task(self) -> None:
         while self._changed:
             self._changed = False
-            await self.save()
+            await self.store()
             await asyncio.sleep(30)
 
     def mark_changed(self) -> None:

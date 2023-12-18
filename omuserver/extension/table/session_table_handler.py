@@ -3,12 +3,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict
 
 from omu.extension.table.table_extension import (
+    TableEventData,
     TableItemAddEvent,
     TableItemClearEvent,
     TableItemRemoveEvent,
-    TableItemsReq,
+    TableItemsEventData,
     TableItemUpdateEvent,
-    TableReq,
 )
 
 from .server_table import TableListener
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from omuserver.session import Session
 
 
-class SessionTableHandler(TableListener):
+class SessionTableListener(TableListener):
     def __init__(
         self, info: TableInfo, session: Session, serializer: Serializable
     ) -> None:
@@ -29,9 +29,11 @@ class SessionTableHandler(TableListener):
         self._serializer = serializer
 
     async def on_add(self, items: Dict[str, Any]) -> None:
+        if self._session.closed:
+            return
         await self._session.send(
             TableItemAddEvent,
-            TableItemsReq(
+            TableItemsEventData(
                 items={
                     key: self._serializer.serialize(value)
                     for key, value in items.items()
@@ -41,9 +43,11 @@ class SessionTableHandler(TableListener):
         )
 
     async def on_update(self, items: Dict[str, Any]) -> None:
+        if self._session.closed:
+            return
         await self._session.send(
             TableItemUpdateEvent,
-            TableItemsReq(
+            TableItemsEventData(
                 items={
                     key: self._serializer.serialize(value)
                     for key, value in items.items()
@@ -53,9 +57,11 @@ class SessionTableHandler(TableListener):
         )
 
     async def on_remove(self, items: Dict[str, Any]) -> None:
+        if self._session.closed:
+            return
         await self._session.send(
             TableItemRemoveEvent,
-            TableItemsReq(
+            TableItemsEventData(
                 items={
                     key: self._serializer.serialize(value)
                     for key, value in items.items()
@@ -65,7 +71,11 @@ class SessionTableHandler(TableListener):
         )
 
     async def on_clear(self) -> None:
-        await self._session.send(TableItemClearEvent, TableReq(type=self._info.key()))
+        if self._session.closed:
+            return
+        await self._session.send(
+            TableItemClearEvent, TableEventData(type=self._info.key())
+        )
 
     def __repr__(self) -> str:
         return (

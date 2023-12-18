@@ -6,19 +6,23 @@ from typing import Any, Dict
 from loguru import logger
 from omu.extension.table.model.table_info import TableInfo
 from omu.extension.table.table_extension import (
+    TableEventData,
     TableFetchReq,
     TableItemAddEvent,
     TableItemClearEvent,
     TableItemFetchEndpoint,
     TableItemGetEndpoint,
     TableItemRemoveEvent,
+    TableItemsEventData,
     TableItemSizeEndpoint,
-    TableItemsReq,
     TableItemUpdateEvent,
-    TableKeysReq,
+    TableKeysEventData,
     TableListenEvent,
+    TableProxyEndpoint,
+    TableProxyEvent,
+    TableProxyEventData,
+    TableProxyListenEvent,
     TableRegisterEvent,
-    TableReq,
     TableType,
 )
 from omu.interface import Keyable, Serializer
@@ -28,9 +32,9 @@ from omuserver.network import NetworkListener
 from omuserver.server import Server, ServerListener
 from omuserver.session import Session
 
+from .adapters import DictTableAdapter, SqliteTableAdapter
 from .cached_table import CachedTable
 from .server_table import ServerTable
-from .table import DictTable, SqliteTable
 
 
 class TableExtension(Extension, NetworkListener, ServerListener):
@@ -40,6 +44,8 @@ class TableExtension(Extension, NetworkListener, ServerListener):
         server.events.register(
             TableRegisterEvent,
             TableListenEvent,
+            TableProxyListenEvent,
+            TableProxyEvent,
             TableItemAddEvent,
             TableItemUpdateEvent,
             TableItemRemoveEvent,
@@ -47,6 +53,7 @@ class TableExtension(Extension, NetworkListener, ServerListener):
         )
         server.events.add_listener(TableRegisterEvent, self._on_table_register)
         server.events.add_listener(TableListenEvent, self._on_table_listen)
+        server.events.add_listener(TableProxyListenEvent, self._on_table_proxy_listen)
         server.events.add_listener(TableItemAddEvent, self._on_table_item_add)
         server.events.add_listener(TableItemUpdateEvent, self._on_table_item_update)
         server.events.add_listener(TableItemRemoveEvent, self._on_table_item_remove)
@@ -57,32 +64,37 @@ class TableExtension(Extension, NetworkListener, ServerListener):
             TableItemFetchEndpoint, self._on_table_item_fetch
         )
         server.endpoints.bind_endpoint(TableItemSizeEndpoint, self._on_table_item_size)
+        server.endpoints.bind_endpoint(TableProxyEndpoint, self._on_table_proxy)
         server.add_listener(self)
 
     @classmethod
     def create(cls, server: Server) -> TableExtension:
         return cls(server)
 
-    async def _on_table_item_get(self, req: TableKeysReq) -> TableItemsReq:
+    async def _on_table_item_get(
+        self, session: Session, req: TableKeysEventData
+    ) -> TableItemsEventData:
         table = self._tables.get(req["type"], None)
         if table is None:
-            return TableItemsReq(type=req["type"], items={})
+            return TableItemsEventData(type=req["type"], items={})
         items = await table.get_all(req["items"])
-        return TableItemsReq(
+        return TableItemsEventData(
             type=req["type"],
             items={
                 key: table.serializer.serialize(item) for key, item in items.items()
             },
         )
 
-    async def _on_table_item_fetch(self, req: TableFetchReq) -> Dict[str, Any]:
+    async def _on_table_item_fetch(
+        self, session: Session, req: TableFetchReq
+    ) -> Dict[str, Any]:
         table = self._tables.get(req["type"], None)
         if table is None:
             return {}
         items = await table.fetch(req["limit"], req.get("cursor"))
         return {key: table.serializer.serialize(item) for key, item in items.items()}
 
-    async def _on_table_item_size(self, req: TableReq) -> int:
+    async def _on_table_item_size(self, session: Session, req: TableEventData) -> int:
         table = self._tables.get(req["type"], None)
         if table is None:
             return 0
@@ -101,14 +113,31 @@ class TableExtension(Extension, NetworkListener, ServerListener):
             return
         table.attach_session(session)
 
-    async def _on_table_item_add(self, session: Session, event: TableItemsReq) -> None:
+    async def _on_table_proxy_listen(self, session: Session, type: str) -> None:
+        table = self._tables.get(type, None)
+        if table is None:
+            return
+        table.attach_proxy_session(session)
+
+    async def _on_table_proxy(
+        self, session: Session, event: TableProxyEventData
+    ) -> int:
+        table = self._tables.get(event["type"], None)
+        if table is None:
+            return 0
+        key = await table.proxy(session, event["key"], event["items"])
+        return key
+
+    async def _on_table_item_add(
+        self, session: Session, event: TableItemsEventData
+    ) -> None:
         table = self._tables.get(event["type"], None)
         if table is None:
             return
         await table.add(event["items"])
 
     async def _on_table_item_update(
-        self, session: Session, event: TableItemsReq
+        self, session: Session, event: TableItemsEventData
     ) -> None:
         table = self._tables.get(event["type"], None)
         if table is None:
@@ -116,29 +145,27 @@ class TableExtension(Extension, NetworkListener, ServerListener):
         await table.update(event["items"])
 
     async def _on_table_item_remove(
-        self, session: Session, event: TableItemsReq
+        self, session: Session, event: TableItemsEventData
     ) -> None:
         table = self._tables.get(event["type"], None)
         if table is None:
             return
         await table.remove(list(event["items"].keys()))
 
-    async def _on_table_item_clear(self, session: Session, event: TableReq) -> None:
+    async def _on_table_item_clear(
+        self, session: Session, event: TableEventData
+    ) -> None:
         table = self._tables.get(event["type"], None)
         if table is None:
             return
         await table.clear()
 
-    async def on_disconnected(self, session: Session) -> None:
-        for table in self._tables.values():
-            table.detach_session(session)
-
     def create_table(self, info, serializer):
         path = self.get_table_path(info)
         if info.use_database:
-            table = SqliteTable.create(path)
+            table = SqliteTableAdapter.create(path)
         else:
-            table = DictTable.create(path)
+            table = DictTableAdapter.create(path)
         server_table = CachedTable(self._server, info, serializer, table)
         self._tables[info.key()] = server_table
         return server_table
@@ -162,5 +189,5 @@ class TableExtension(Extension, NetworkListener, ServerListener):
 
     async def on_shutdown(self) -> None:
         for table in self._tables.values():
-            await table.save()
-            await table.save()
+            await table.store()
+            await table.store()
