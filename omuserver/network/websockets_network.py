@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, List
+from typing import TYPE_CHECKING, Dict, List
 
 import websockets
 from loguru import logger
-from omu.extension.endpoint import EndpointType
 
 from omuserver.server import ServerListener
 from omuserver.session import SessionListener
@@ -23,7 +22,6 @@ class WebsocketsNetwork(Network, ServerListener, SessionListener):
     def __init__(self, server: Server) -> None:
         self._server = server
         self._listeners: List[NetworkListener] = []
-        self._endpoints: Dict[str, Callable[[Any], Awaitable[Any]]] = {}
         self._sessions: Dict[str, WebSocketsSession] = {}
         self._start = websockets.serve(
             self._websocket_handler,
@@ -31,28 +29,6 @@ class WebsocketsNetwork(Network, ServerListener, SessionListener):
             self._server.address.port,
         )
         server.add_listener(self)
-
-    def bind_endpoint[ReqData, ResData](
-        self,
-        type: EndpointType[Any, Any, ReqData, ResData],
-        handler: Callable[[ReqData], Awaitable[ResData]],
-    ) -> None:
-        key = type.info.key()
-        if key in self._endpoints:
-            raise ValueError(f"Endpoint {key} already bound")
-        self._endpoints[key] = handler
-
-    def _wrap_handler[ReqData, ResData](
-        self,
-        type: EndpointType[Any, Any, ReqData, ResData],
-        handler: Callable[[ReqData], Awaitable[ResData]],
-    ) -> Callable[[ReqData], Awaitable[ResData]]:
-        async def _handler(req_data: dict) -> Any:
-            req = type.request_serializer.deserialize(req_data)  # type: ignore
-            res = await handler(req)
-            return type.response_serializer.serialize(res)
-
-        return _handler  # type: ignore
 
     async def _websocket_handler(
         self, websocket: websockets.WebSocketServerProtocol
