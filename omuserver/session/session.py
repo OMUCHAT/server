@@ -24,6 +24,10 @@ class Session(abc.ABC):
         ...
 
     @abc.abstractmethod
+    async def listen(self) -> None:
+        ...
+
+    @abc.abstractmethod
     async def send[T](self, type: EventType[Any, T], data: T) -> None:
         ...
 

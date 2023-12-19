@@ -1,7 +1,10 @@
 import asyncio
+import json
 from pathlib import Path
 from typing import List, Optional
 
+import aiohttp
+from aiohttp import web
 from loguru import logger
 from omu.connection import Address
 from omu.event import EVENTS
@@ -13,12 +16,27 @@ from omuserver.extension.registry.registry_extension import RegistryExtension
 from omuserver.extension.server import ServerExtension
 from omuserver.extension.table import TableExtension
 from omuserver.network import Network
-from omuserver.network.websockets_network import WebsocketsNetwork
+from omuserver.network.aiohttp_network import AiohttpNetwork
 
+from .. import __version__
 from .server import Server, ServerListener
 
+client = aiohttp.ClientSession(
+    headers={
+        "User-Agent": json.dumps(
+            [
+                "omu",
+                {
+                    "name": "omuserver",
+                    "version": __version__,
+                },
+            ]
+        )
+    }
+)
 
-class WebsocketsServer(Server):
+
+class OmuServer(Server):
     def __init__(
         self,
         address: Address,
@@ -28,16 +46,56 @@ class WebsocketsServer(Server):
     ) -> None:
         self._address = address
         self._listeners: List[ServerListener] = []
-        self._network = network or WebsocketsNetwork(self)
+        self._network = network or AiohttpNetwork(self)
         self._events = EventRegistry(self)
         self._events.register(EVENTS.Connect, EVENTS.Ready)
         self._extensions = extensions or ExtensionRegistryServer(self)
         self._data_dir = data_dir or Path.cwd() / "data"
+        self._assets_dir = self._data_dir / "assets"
         self._running = False
         self._endpoint = self.extensions.register(EndpointExtension)
         self._tables = self.extensions.register(TableExtension)
         self._server = self.extensions.register(ServerExtension)
         self._registry = self.extensions.register(RegistryExtension)
+
+        self._network.add_websocket_route("/ws")
+        self._network.add_http_route("/proxy", self._handle_proxy)
+        self._network.add_http_route("/asset", self._handle_asset)
+        self._session_tasks: List[asyncio.Task] = []
+
+    async def _handle_proxy(self, request: web.Request) -> web.StreamResponse:
+        url = request.query.get("url")
+        if not url:
+            return web.Response(status=400)
+        try:
+            async with client.get(url) as resp:
+                headers = {
+                    "Content-Type": resp.content_type,
+                }
+                resp.raise_for_status()
+                return web.Response(
+                    status=resp.status,
+                    headers=headers,
+                    body=await resp.read(),
+                )
+        except aiohttp.ClientResponseError as e:
+            return web.Response(status=e.status, text=e.message)
+        except Exception as e:
+            logger.error(e)
+            return web.Response(status=500)
+
+    async def _handle_asset(self, request: web.Request) -> web.StreamResponse:
+        path = request.query.get("path")
+        if not path:
+            return web.Response(status=400)
+        try:
+            path = self._assets_dir / path
+            if not path.exists():
+                return web.Response(status=404)
+            return web.FileResponse(path)
+        except Exception as e:
+            logger.error(e)
+            return web.Response(status=500)
 
     def run(self) -> None:
         loop = asyncio.get_event_loop()

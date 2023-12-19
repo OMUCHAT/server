@@ -1,13 +1,13 @@
 from omu.connection import Address
 
-from omuserver.server.websockets_server import WebsocketsServer
+from omuserver.server.omuserver import OmuServer
 
 address = Address(
     host="0.0.0.0",
     port=26423,
     secure=False,
 )
-server = WebsocketsServer(address)
+server = OmuServer(address)
 
 
 if __name__ == "__main__":

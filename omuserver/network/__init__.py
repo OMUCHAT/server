@@ -1,8 +1,8 @@
+from .aiohttp_network import AiohttpNetwork
 from .network import Network, NetworkListener
-from .websockets_network import WebsocketsNetwork
 
 __all__ = [
     "Network",
     "NetworkListener",
-    "WebsocketsNetwork",
+    "AiohttpNetwork",
 ]
