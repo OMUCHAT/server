@@ -179,15 +179,14 @@ class TableExtension(Extension, NetworkListener, ServerListener):
         return table
 
     def get_table_path(self, info) -> Path:
-        path = self._server.data_path / "tables" / info.extension / info.name
+        path = self._server.directories.data / "tables" / info.extension / info.name
         path.mkdir(parents=True, exist_ok=True)
         return path
 
-    async def on_initialized(self) -> None:
+    async def on_start(self) -> None:
         for table in self._tables.values():
             await table.load()
 
     async def on_shutdown(self) -> None:
         for table in self._tables.values():
-            await table.store()
             await table.store()

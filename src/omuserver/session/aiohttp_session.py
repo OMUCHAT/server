@@ -36,10 +36,16 @@ class AiohttpSession(Session):
         try:
             while True:
                 try:
-                    async for msg in self.socket:
-                        event = EventJson.from_json(msg.json())
-                        for listener in self._listeners:
-                            await listener.on_event(self, event)
+                    msg = await self.socket.receive()
+                    if msg.type == web.WSMsgType.CLOSE:
+                        break
+                    elif msg.type == web.WSMsgType.ERROR:
+                        break
+                    elif msg.type == web.WSMsgType.CLOSED:
+                        break
+                    event = EventJson.from_json(msg.json())
+                    for listener in self._listeners:
+                        await listener.on_event(self, event)
                 except RuntimeError:
                     break
         finally:

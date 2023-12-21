@@ -70,7 +70,7 @@ class SqliteTableAdapter(TableAdapter):
 
     async def fetch_forward(self, limit: int, cursor: str) -> Dict[str, Json]:
         _cursor = self._conn.execute(
-            f"SELECT key, value FROM {self._table} WHERE key > ? ORDER BY key LIMIT ?",
+            f"SELECT key, value FROM {self._table} WHERE key => ? ORDER BY id LIMIT ?",
             (cursor, limit),
         )
         rows = _cursor.fetchall()
@@ -78,7 +78,7 @@ class SqliteTableAdapter(TableAdapter):
 
     async def fetch_backward(self, limit: int, cursor: str) -> Dict[str, Json]:
         _cursor = self._conn.execute(
-            f"SELECT key, value FROM {self._table} WHERE key < ? ORDER BY key DESC LIMIT ?",
+            f"SELECT key, value FROM {self._table} WHERE key <= ? ORDER BY id DESC LIMIT ?",
             (cursor, limit),
         )
         rows = _cursor.fetchall()
@@ -86,7 +86,7 @@ class SqliteTableAdapter(TableAdapter):
 
     async def first(self) -> str | None:
         _cursor = self._conn.execute(
-            f"SELECT key FROM {self._table} ORDER BY key LIMIT 1"
+            f"SELECT key FROM {self._table} ORDER BY id LIMIT 1"
         )
         row = _cursor.fetchone()
         if row is None:
@@ -95,7 +95,7 @@ class SqliteTableAdapter(TableAdapter):
 
     async def last(self) -> str | None:
         _cursor = self._conn.execute(
-            f"SELECT key FROM {self._table} ORDER BY key DESC LIMIT 1"
+            f"SELECT key FROM {self._table} ORDER BY id DESC LIMIT 1"
         )
         row = _cursor.fetchone()
         if row is None:

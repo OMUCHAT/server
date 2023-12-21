@@ -1,6 +1,5 @@
 import asyncio
 import json
-from pathlib import Path
 from typing import List, Optional
 
 import aiohttp
@@ -9,9 +8,11 @@ from loguru import logger
 from omu.connection import Address
 from omu.event import EVENTS
 
+from omuserver.directories import Directories, get_directories
 from omuserver.event.event_registry import EventRegistry
 from omuserver.extension import ExtensionRegistry, ExtensionRegistryServer
 from omuserver.extension.endpoint import EndpointExtension
+from omuserver.extension.plugin.plugin_extension import PluginExtension
 from omuserver.extension.registry.registry_extension import RegistryExtension
 from omuserver.extension.server import ServerExtension
 from omuserver.extension.table import TableExtension
@@ -42,7 +43,7 @@ class OmuServer(Server):
         address: Address,
         network: Optional[Network] = None,
         extensions: Optional[ExtensionRegistry] = None,
-        data_dir: Optional[Path] = None,
+        directories: Optional[Directories] = None,
     ) -> None:
         self._address = address
         self._listeners: List[ServerListener] = []
@@ -50,17 +51,18 @@ class OmuServer(Server):
         self._events = EventRegistry(self)
         self._events.register(EVENTS.Connect, EVENTS.Ready)
         self._extensions = extensions or ExtensionRegistryServer(self)
-        self._data_dir = data_dir or Path.cwd() / "data"
-        self._assets_dir = self._data_dir / "assets"
+        self._directories = directories or get_directories()
+        self._directories.mkdir()
         self._running = False
         self._endpoint = self.extensions.register(EndpointExtension)
         self._tables = self.extensions.register(TableExtension)
         self._server = self.extensions.register(ServerExtension)
         self._registry = self.extensions.register(RegistryExtension)
+        self._plugin = self.extensions.register(PluginExtension)
 
         self._network.add_websocket_route("/ws")
         self._network.add_http_route("/proxy", self._handle_proxy)
-        self._network.add_http_route("/asset", self._handle_asset)
+        self._network.add_http_route("/assets", self._handle_assets)
         self._session_tasks: List[asyncio.Task] = []
 
     async def _handle_proxy(self, request: web.Request) -> web.StreamResponse:
@@ -84,12 +86,12 @@ class OmuServer(Server):
             logger.error(e)
             return web.Response(status=500)
 
-    async def _handle_asset(self, request: web.Request) -> web.StreamResponse:
+    async def _handle_assets(self, request: web.Request) -> web.StreamResponse:
         path = request.query.get("path")
         if not path:
             return web.Response(status=400)
         try:
-            path = self._assets_dir / path
+            path = self._directories.assets / path
             if not path.exists():
                 return web.Response(status=404)
             return web.FileResponse(path)
@@ -118,7 +120,7 @@ class OmuServer(Server):
         self._running = True
         await self._network.start()
         for listener in self._listeners:
-            await listener.on_initialized()
+            await listener.on_start()
 
     async def shutdown(self) -> None:
         self._running = False
@@ -134,6 +136,10 @@ class OmuServer(Server):
     @property
     def address(self) -> Address:
         return self._address
+
+    @property
+    def directories(self) -> Directories:
+        return self._directories
 
     @property
     def network(self) -> Network:
@@ -156,8 +162,8 @@ class OmuServer(Server):
         return self._tables
 
     @property
-    def data_path(self) -> Path:
-        return self._data_dir
+    def registry(self) -> RegistryExtension:
+        return self._registry
 
     @property
     def running(self) -> bool:

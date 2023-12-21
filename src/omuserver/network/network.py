@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Awaitable, Callable
 if TYPE_CHECKING:
     from omuserver.session import Session
 
-type Coro[**P, T] = Callable[P, Awaitable[T]]
+type Coro[**P, R] = Callable[P, Awaitable[R]]
 
 
 class Network(abc.ABC):

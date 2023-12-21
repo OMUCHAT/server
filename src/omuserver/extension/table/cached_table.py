@@ -91,10 +91,11 @@ class CachedTable[T](ServerTable[T], SessionListener):
 
     async def get_all(self, keys: List[str]) -> Dict[str, T]:
         items = {}
-        for key in keys:
+        for key in tuple(keys):
             if key in self._cache:
                 items[key] = self._cache[key]
-        if len(items) == len(keys):
+                keys.remove(key)
+        if len(keys) == 0:
             return items
         data = await self._table.get_all(keys)
         for key, value in data.items():

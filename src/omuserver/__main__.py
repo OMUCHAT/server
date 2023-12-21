@@ -1,6 +1,6 @@
-from omu.connection import Address
-
 from omuserver.server.omuserver import OmuServer
+
+from omu.connection import Address
 
 address = Address(
     host="0.0.0.0",

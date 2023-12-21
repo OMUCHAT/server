@@ -22,24 +22,24 @@ class RegistryExtension(Extension):
     def __init__(self, server: Server) -> None:
         self._server = server
         server.events.register(RegistryListenEvent, RegistryUpdateEvent)
-        server.events.add_listener(RegistryListenEvent, self.on_listen)
-        server.events.add_listener(RegistryUpdateEvent, self.on_update)
-        server.endpoints.bind_endpoint(RegistryGetEndpoint, self.on_get)
+        server.events.add_listener(RegistryListenEvent, self._on_listen)
+        server.events.add_listener(RegistryUpdateEvent, self._on_update)
+        server.endpoints.bind_endpoint(RegistryGetEndpoint, self._on_get)
         self.registries: dict[str, Registry] = {}
 
     @classmethod
     def create(cls, server: Server) -> RegistryExtension:
         return cls(server)
 
-    async def on_listen(self, session: Session, key: str) -> None:
+    async def _on_listen(self, session: Session, key: str) -> None:
         registry = await self.get(key)
         await registry.attach(session)
 
-    async def on_update(self, session: Session, event: RegistryEventData) -> None:
+    async def _on_update(self, session: Session, event: RegistryEventData) -> None:
         registry = await self.get(event["key"])
         await registry.store(event["value"])
 
-    async def on_get(self, session: Session, key: str) -> Any:
+    async def _on_get(self, session: Session, key: str) -> Any:
         registry = await self.get(key)
         return registry.data
 
@@ -53,3 +53,7 @@ class RegistryExtension(Extension):
             self.registries[key] = registry
             await registry.load()
         return registry
+
+    async def store(self, key: str, value: Any) -> None:
+        registry = await self.get(key)
+        await registry.store(value)

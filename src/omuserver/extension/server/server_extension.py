@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from loguru import logger
 from omu.extension.server.server_extension import AppsTableType
 
+from omuserver import __version__
 from omuserver.extension import Extension
 from omuserver.extension.table import TableExtension
 from omuserver.network import NetworkListener
@@ -18,17 +19,21 @@ if TYPE_CHECKING:
 class ServerExtension(Extension, NetworkListener, ServerListener):
     def __init__(self, server: Server) -> None:
         self._server = server
-        server.network.add_listener(self)
         table = server.extensions.get(TableExtension)
         self.apps = table.register_table(AppsTableType)
-        pass
+        server.network.add_listener(self)
+        server.add_listener(self)
 
     @classmethod
     def create(cls, server: Server) -> ServerExtension:
         return cls(server)
 
-    async def on_initialized(self) -> None:
+    async def on_start(self) -> None:
         await self.apps.clear()
+        await self._server.registry.store("server:version", __version__)
+        await self._server.registry.store(
+            "server:directories", self._server.directories.json()
+        )
 
     async def on_connected(self, session: Session) -> None:
         logger.info(f"Connected: {session.app.key()}")
@@ -37,6 +42,3 @@ class ServerExtension(Extension, NetworkListener, ServerListener):
     async def on_disconnected(self, session: Session) -> None:
         logger.info(f"Disconnected: {session.app.key()}")
         await self.apps.remove([session.app.key()])
-
-    def stop(self) -> None:
-        pass

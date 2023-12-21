@@ -1,21 +1,22 @@
 from __future__ import annotations
 
 import abc
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from omu.connection import Address
 
+    from omuserver.directories import Directories
     from omuserver.event.event_registry import EventRegistry
     from omuserver.extension.endpoint import EndpointExtension
     from omuserver.extension.extension_registry import ExtensionRegistry
+    from omuserver.extension.registry import RegistryExtension
     from omuserver.extension.table import TableExtension
     from omuserver.network import Network
 
 
 class ServerListener:
-    async def on_initialized(self) -> None:
+    async def on_start(self) -> None:
         ...
 
     async def on_shutdown(self) -> None:
@@ -26,6 +27,11 @@ class Server(abc.ABC):
     @property
     @abc.abstractmethod
     def address(self) -> Address:
+        ...
+
+    @property
+    @abc.abstractmethod
+    def directories(self) -> Directories:
         ...
 
     @property
@@ -55,7 +61,7 @@ class Server(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def data_path(self) -> Path:
+    def registry(self) -> RegistryExtension:
         ...
 
     @property

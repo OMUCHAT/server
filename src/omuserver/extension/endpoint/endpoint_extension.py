@@ -47,7 +47,7 @@ class SessionEndpoint(Endpoint):
         await self._session.send(EndpointCallEvent, data)
 
 
-type Coro[**P, T] = Callable[P, Coroutine[Any, Any, T]]
+type Coro[**P, R] = Callable[P, Coroutine[Any, Any, R]]
 
 
 class ServerEndpoint[Req, Res, ReqData, ResData](Endpoint):
@@ -116,6 +116,8 @@ class EndpointExtension(Extension, ServerListener):
 
     async def _on_endpoint_register(self, session: Session, info: EndpointInfo) -> None:
         await self.endpoints.add({info.key(): info})
+        endpoint = SessionEndpoint(session, info)
+        self._endpoints[info.key()] = endpoint
 
     def bind_endpoint[Req, Res](
         self,
@@ -170,17 +172,6 @@ class EndpointExtension(Extension, ServerListener):
     async def _get_endpoint(
         self, req: EndpointDataReq, session: Session
     ) -> Endpoint | None:
-        if await self.endpoints.get(req["type"]) is None:
-            await session.send(
-                EndpointErrorEvent,
-                EndpointError(
-                    type=req["type"], key=req["key"], error="Endpoint not found"
-                ),
-            )
-            logger.warning(
-                f"{session.app.name} tried to call unknown endpoint {req['type']}"
-            )
-            return
         endpoint = self._endpoints.get(req["type"])
         if endpoint is None:
             await session.send(
@@ -195,7 +186,7 @@ class EndpointExtension(Extension, ServerListener):
             return
         return endpoint
 
-    async def on_initialized(self) -> None:
+    async def on_start(self) -> None:
         tables = self._server.extensions.get(TableExtension)
         self.endpoints = tables.register_table(EndpointsTableType)
         await self.endpoints.load()
