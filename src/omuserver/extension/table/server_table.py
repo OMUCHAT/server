@@ -71,7 +71,12 @@ class ServerTable[T](abc.ABC):
         ...
 
     @abc.abstractmethod
-    async def fetch(self, limit: int, cursor: str | None = None) -> Dict[str, T]:
+    async def fetch(
+        self,
+        before: int | None = None,
+        after: int | None = None,
+        cursor: str | None = None,
+    ) -> Dict[str, T]:
         ...
 
     @abc.abstractmethod

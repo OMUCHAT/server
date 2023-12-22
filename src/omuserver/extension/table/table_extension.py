@@ -91,7 +91,11 @@ class TableExtension(Extension, NetworkListener, ServerListener):
         table = self._tables.get(req["type"], None)
         if table is None:
             return {}
-        items = await table.fetch(req["limit"], req.get("cursor"))
+        items = await table.fetch(
+            before=req.get("before", None),
+            after=req.get("after", None),
+            cursor=req.get("cursor", None),
+        )
         return {key: table.serializer.serialize(item) for key, item in items.items()}
 
     async def _on_table_item_size(self, session: Session, req: TableEventData) -> int:
@@ -178,8 +182,8 @@ class TableExtension(Extension, NetworkListener, ServerListener):
         table = self.create_table(table_type.info, table_type.serializer)
         return table
 
-    def get_table_path(self, info) -> Path:
-        path = self._server.directories.data / "tables" / info.extension / info.name
+    def get_table_path(self, info: TableInfo) -> Path:
+        path = self._server.directories.data / "tables" / info.owner / info.name
         path.mkdir(parents=True, exist_ok=True)
         return path
 

@@ -46,25 +46,32 @@ class DictTableAdapter(TableAdapter):
             if key in self._data:
                 del self._data[key]
 
-    async def fetch_forward(self, limit: int, cursor: str) -> Dict[str, Json]:
-        keys = sorted(self._data.keys())
+    async def fetch(
+        self, before: int | None, after: int | None, cursor: str | None
+    ) -> Dict[str, Json]:
+        keys = list(self._data.keys())
+        if cursor is None:
+            cursor = await self.first() if before is not None else await self.last()
+        if cursor is None:
+            return {}
+        if cursor not in keys:
+            raise ValueError("Invalid cursor")
         index = keys.index(cursor)
-        return {key: self._data[key] for key in keys[max(0, index) :][:limit]}
-
-    async def fetch_backward(self, limit: int, cursor: str) -> Dict[str, Json]:
-        keys = sorted(self._data.keys())
-        index = keys.index(cursor)
-        return {key: self._data[key] for key in keys[: max(0, index + 1)][:limit]}
+        if before is not None:
+            keys = keys[max(0, index - before) :]
+        if after is not None:
+            keys = keys[: min(len(keys), index + after + 1)]
+        return {key: self._data[key] for key in keys}
 
     async def first(self) -> str | None:
         if not self._data:
             return None
-        return sorted(self._data.keys())[0]
+        return tuple(self._data.keys())[0]
 
     async def last(self) -> str | None:
         if not self._data:
             return None
-        return sorted(self._data.keys())[-1]
+        return tuple(self._data.keys())[-1]
 
     async def clear(self) -> None:
         self._data.clear()

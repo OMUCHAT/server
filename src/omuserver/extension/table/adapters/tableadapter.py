@@ -55,11 +55,9 @@ class TableAdapter(abc.ABC):
         pass
 
     @abc.abstractmethod
-    async def fetch_forward(self, limit: int, cursor: str) -> Dict[str, Json]:
-        pass
-
-    @abc.abstractmethod
-    async def fetch_backward(self, limit: int, cursor: str) -> Dict[str, Json]:
+    async def fetch(
+        self, before: int | None, after: str | None, cursor: str | None
+    ) -> Dict[str, Json]:
         pass
 
     @abc.abstractmethod

@@ -185,19 +185,16 @@ class CachedTable[T](ServerTable[T], SessionListener):
         self._cache.clear()
         self.mark_changed()
 
-    async def fetch(self, limit: int, cursor: str | None = None) -> Dict[str, T]:
-        if limit == 0:
-            return {}
-        if cursor is None:
-            cursor = await self._table.last()
-        if cursor is None:
-            return {}
-        data = await self._table.fetch_backward(limit, cursor)
-        items = {
-            key: self._serializer.deserialize(value) for key, value in data.items()
+    async def fetch(
+        self,
+        before: int | None = None,
+        after: str | None = None,
+        cursor: str | None = None,
+    ) -> Dict[str, T]:
+        items = await self._table.fetch(before, after, cursor)
+        return {
+            key: self._serializer.deserialize(value) for key, value in items.items()
         }
-        await self.update_cache(items)
-        return items
 
     async def iterator(self) -> AsyncIterator[T]:
         cursor: str | None = None

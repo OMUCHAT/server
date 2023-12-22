@@ -68,21 +68,45 @@ class SqliteTableAdapter(TableAdapter):
             keys,
         )
 
-    async def fetch_forward(self, limit: int, cursor: str) -> Dict[str, Json]:
-        _cursor = self._conn.execute(
-            f"SELECT key, value FROM {self._table} WHERE key => ? ORDER BY id LIMIT ?",
-            (cursor, limit),
-        )
-        rows = _cursor.fetchall()
-        return {row[0]: json.loads(row[1]) for row in rows}
+    """
+    DictTableAdapter:
+    async def fetch(
+        self, before: int | None, after: int | None, cursor: str | None
+    ) -> Dict[str, Json]:
+        keys = list(self._data.keys())
+        if cursor is None:
+            cursor = await self.first() if before is not None else await self.last()
+        if cursor is None:
+            return {}
+        index = keys.index(cursor)
+        if before is not None:
+            keys = keys[max(0, index - before) :]
+        if after is not None:
+            keys = keys[: min(len(keys), index + after + 1)]
+        return {key: self._data[key] for key in keys}
+    """
 
-    async def fetch_backward(self, limit: int, cursor: str) -> Dict[str, Json]:
-        _cursor = self._conn.execute(
-            f"SELECT key, value FROM {self._table} WHERE key <= ? ORDER BY id DESC LIMIT ?",
-            (cursor, limit),
-        )
-        rows = _cursor.fetchall()
-        return {row[0]: json.loads(row[1]) for row in rows}
+    async def fetch(
+        self, before: int | None, after: int | None, cursor: str | None
+    ) -> Dict[str, Json]:
+        if cursor is None:
+            cursor = await self.first() if before is not None else await self.last()
+        if cursor is None:
+            return {}
+        items = {}
+        if before is not None:
+            _cursor = self._conn.execute(
+                f"SELECT key, value FROM {self._table} WHERE key <= ? ORDER BY id DESC LIMIT ?",
+                (cursor, before),
+            )
+            items.update({row[0]: json.loads(row[1]) for row in _cursor.fetchall()})
+        if after is not None:
+            _cursor = self._conn.execute(
+                f"SELECT key, value FROM {self._table} WHERE key >= ? ORDER BY id ASC LIMIT ?",
+                (cursor, after),
+            )
+            items.update({row[0]: json.loads(row[1]) for row in _cursor.fetchall()})
+        return items
 
     async def first(self) -> str | None:
         _cursor = self._conn.execute(
