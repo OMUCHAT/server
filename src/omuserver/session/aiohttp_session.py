@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, List
 
 from aiohttp import web
+from loguru import logger
 from omu.event.event import EventJson, EventType
 from omu.extension.server.model.app import App, AppJson
 
@@ -43,7 +44,13 @@ class AiohttpSession(Session):
                         break
                     elif msg.type == web.WSMsgType.CLOSED:
                         break
-                    event = EventJson.from_json(msg.json())
+                    elif msg.type == web.WSMsgType.CLOSING:
+                        break
+                    if msg.data is None:
+                        logger.warning(f"Received empty message {msg}")
+                        continue
+                    json = msg.json()
+                    event = EventJson.from_json(json)
                     for listener in self._listeners:
                         await listener.on_event(self, event)
                 except RuntimeError:

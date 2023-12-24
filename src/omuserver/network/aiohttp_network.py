@@ -58,6 +58,8 @@ class AiohttpNetwork(Network, ServerListener, SessionListener):
         await session.listen()
 
     async def on_disconnected(self, session: Session) -> None:
+        if session.app.key() not in self._sessions:
+            return
         self._sessions.pop(session.app.key())
         for listener in self._listeners:
             await listener.on_disconnected(session)
