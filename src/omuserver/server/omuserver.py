@@ -12,6 +12,7 @@ from omuserver.directories import Directories, get_directories
 from omuserver.event.event_registry import EventRegistry
 from omuserver.extension import ExtensionRegistry, ExtensionRegistryServer
 from omuserver.extension.endpoint import EndpointExtension
+from omuserver.extension.message.message_extension import MessageExtension
 from omuserver.extension.plugin.plugin_extension import PluginExtension
 from omuserver.extension.registry.registry_extension import RegistryExtension
 from omuserver.extension.server import ServerExtension
@@ -58,6 +59,7 @@ class OmuServer(Server):
         self._tables = self.extensions.register(TableExtension)
         self._server = self.extensions.register(ServerExtension)
         self._registry = self.extensions.register(RegistryExtension)
+        self._message = self.extensions.register(MessageExtension)
         self._plugin = self.extensions.register(PluginExtension)
 
         self._network.add_websocket_route("/ws")
@@ -164,6 +166,10 @@ class OmuServer(Server):
     @property
     def registry(self) -> RegistryExtension:
         return self._registry
+
+    @property
+    def messages(self) -> MessageExtension:
+        return self._message
 
     @property
     def running(self) -> bool:

@@ -71,4 +71,3 @@ class EventRegistry(NetworkListener, SessionListener):
         if not self._events.get(event_type.type):
             raise ValueError(f"Event type {event_type.type} not registered")
         self._events[event_type.type].listeners.remove(listener)
-        self._events[event_type.type].listeners.remove(listener)

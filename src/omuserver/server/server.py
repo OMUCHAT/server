@@ -3,6 +3,8 @@ from __future__ import annotations
 import abc
 from typing import TYPE_CHECKING
 
+from omuserver.extension.message.message_extension import MessageExtension
+
 if TYPE_CHECKING:
     from omu.connection import Address
 
@@ -62,6 +64,11 @@ class Server(abc.ABC):
     @property
     @abc.abstractmethod
     def registry(self) -> RegistryExtension:
+        ...
+
+    @property
+    @abc.abstractmethod
+    def messages(self) -> MessageExtension:
         ...
 
     @property

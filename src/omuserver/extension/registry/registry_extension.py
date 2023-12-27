@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Dict
 
 from omu.extension.registry.registry_extension import (
     RegistryEventData,
@@ -25,7 +25,7 @@ class RegistryExtension(Extension):
         server.events.add_listener(RegistryListenEvent, self._on_listen)
         server.events.add_listener(RegistryUpdateEvent, self._on_update)
         server.endpoints.bind_endpoint(RegistryGetEndpoint, self._on_get)
-        self.registries: dict[str, Registry] = {}
+        self.registries: Dict[str, Registry] = {}
 
     @classmethod
     def create(cls, server: Server) -> RegistryExtension:
