@@ -3,13 +3,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from loguru import logger
-from omu.extension.server.server_extension import AppsTableType
-
 from omuserver import __version__
 from omuserver.extension import Extension
 from omuserver.extension.table import TableExtension
 from omuserver.network import NetworkListener
 from omuserver.server.server import ServerListener
+
+from omu.extension.server.server_extension import AppsTableType
 
 if TYPE_CHECKING:
     from omuserver.server import Server
@@ -32,7 +32,7 @@ class ServerExtension(Extension, NetworkListener, ServerListener):
         await self.apps.clear()
         await self._server.registry.store("server:version", __version__)
         await self._server.registry.store(
-            "server:directories", self._server.directories.json()
+            "server:directories", self._server.directories.to_json()
         )
 
     async def on_connected(self, session: Session) -> None:

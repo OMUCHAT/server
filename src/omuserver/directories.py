@@ -15,7 +15,7 @@ class Directories:
         self.assets.mkdir(parents=True, exist_ok=True)
         self.plugins.mkdir(parents=True, exist_ok=True)
 
-    def json(self):
+    def to_json(self):
         return {
             "data": str(self.data),
             "assets": str(self.assets),
