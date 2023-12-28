@@ -81,3 +81,9 @@ class AiohttpSession(Session):
 
     def remove_listener(self, listener: SessionListener) -> None:
         self._listeners.remove(listener)
+
+    def __str__(self) -> str:
+        return f"AiohttpSession({self._app})"
+
+    def __repr__(self) -> str:
+        return str(self)
