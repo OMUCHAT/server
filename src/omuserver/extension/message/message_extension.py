@@ -8,6 +8,7 @@ from omu.extension.message.message_extension import (
     MessageListenEvent,
     MessageRegisterEvent,
 )
+
 from omuserver.extension import Extension
 from omuserver.session.session import SessionListener
 
@@ -25,6 +26,11 @@ class Message(SessionListener):
     def add_listener(self, session: Session) -> None:
         self.listeners.add(session)
         session.add_listener(self)
+
+    def set_session(self, session: Session) -> None:
+        if self.session is not None and not self.session.closed:
+            raise Exception("Session already set")
+        self.session = session
 
     async def on_disconnected(self, session: Session) -> None:
         self.listeners.discard(session)
@@ -46,13 +52,14 @@ class MessageExtension(Extension):
         return cls(server)
 
     async def _on_register(self, session: Session, key: str) -> None:
-        if key in self._keys:
+        if self.has(key):
             message = self._keys[key]
-            if message.session is None or message.session.closed:
-                message.session = session
-            else:
-                raise Exception("Key already registered")
+            message.set_session(session)
+            return
         self._keys[key] = Message(key, session)
+
+    def has(self, key):
+        return key in self._keys
 
     async def _on_listen(self, session: Session, key: str) -> None:
         if key not in self._keys:
