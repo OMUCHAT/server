@@ -28,7 +28,6 @@ from omu.extension.table.table_extension import (
 from omu.interface import Keyable, Serializer
 
 from omuserver.extension import Extension
-from omuserver.network import NetworkListener
 from omuserver.server import Server, ServerListener
 from omuserver.session import Session
 
@@ -37,7 +36,7 @@ from .cached_table import CachedTable
 from .server_table import ServerTable
 
 
-class TableExtension(Extension, NetworkListener, ServerListener):
+class TableExtension(Extension, ServerListener):
     def __init__(self, server: Server) -> None:
         self._server = server
         self._tables: Dict[str, ServerTable] = {}
@@ -58,7 +57,6 @@ class TableExtension(Extension, NetworkListener, ServerListener):
         server.events.add_listener(TableItemUpdateEvent, self._on_table_item_update)
         server.events.add_listener(TableItemRemoveEvent, self._on_table_item_remove)
         server.events.add_listener(TableItemClearEvent, self._on_table_item_clear)
-        server.network.add_listener(self)
         server.endpoints.bind_endpoint(TableItemGetEndpoint, self._on_table_item_get)
         server.endpoints.bind_endpoint(
             TableItemFetchEndpoint, self._on_table_item_fetch

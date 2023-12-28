@@ -39,16 +39,22 @@ class CachedTable[T](ServerTable[T], SessionListener):
         self._sessions: Dict[Session, SessionTableListener] = {}
         self._proxy_sessions: List[Session] = []
         self._changed = False
+        self._loaded = False
         self._key = 0
         self._save_task: asyncio.Task | None = None
 
     async def store(self) -> None:
+        if not self._loaded:
+            raise Exception("Table not loaded")
+        if not self._changed:
+            return
         await self._table.store()
 
     async def load(self) -> None:
-        if self._changed:
-            await self.store()
-        await self._table.store()
+        if self._loaded:
+            return
+        await self._table.load()
+        self._loaded = True
 
     @property
     def cache(self) -> Dict[str, T]:
