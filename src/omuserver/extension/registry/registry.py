@@ -25,7 +25,7 @@ class Registry(SessionListener):
             if self._path.exists():
                 self.data = json.loads(self._path.read_text())
             else:
-                self.data = {}
+                self.data = None
         return self.data
 
     async def store(self, value: Any) -> None:
@@ -50,4 +50,6 @@ class Registry(SessionListener):
         )
 
     async def on_disconnected(self, session: Session) -> None:
+        if session not in self._listeners:
+            raise Exception("Session not attached")
         self._listeners.remove(session)
