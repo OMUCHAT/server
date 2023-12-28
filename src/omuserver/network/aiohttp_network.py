@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Dict, List
 
 from aiohttp import web
 from loguru import logger
+from omu.event import EVENTS
 
 from omuserver.server import ServerListener
 from omuserver.session import SessionListener
@@ -55,6 +56,7 @@ class AiohttpNetwork(Network, ServerListener, SessionListener):
         session.add_listener(self)
         for listener in self._listeners:
             await listener.on_connected(session)
+        await session.send(EVENTS.Ready, None)
         await session.listen()
 
     async def on_disconnected(self, session: Session) -> None:
