@@ -1,6 +1,7 @@
-from omuserver.server.omuserver import OmuServer
-
+from loguru import logger
 from omu.connection import Address
+
+from omuserver.server.omuserver import OmuServer
 
 address = Address(
     host="0.0.0.0",
@@ -11,4 +12,5 @@ server = OmuServer(address)
 
 
 if __name__ == "__main__":
+    logger.info("Starting server...")
     server.run()
