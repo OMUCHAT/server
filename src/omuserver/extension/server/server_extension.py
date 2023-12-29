@@ -3,13 +3,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from loguru import logger
+from omu.extension.server.server_extension import AppsTableType, ShutdownEndpointType
+
 from omuserver import __version__
 from omuserver.extension import Extension
 from omuserver.extension.table import TableExtension
 from omuserver.network import NetworkListener
 from omuserver.server.server import ServerListener
-
-from omu.extension.server.server_extension import AppsTableType
+from omuserver.utils.python import get_launch_command
 
 if TYPE_CHECKING:
     from omuserver.server import Server
@@ -23,17 +24,30 @@ class ServerExtension(Extension, NetworkListener, ServerListener):
         self.apps = table.register_table(AppsTableType)
         server.network.add_listener(self)
         server.add_listener(self)
+        server.endpoints.bind_endpoint(ShutdownEndpointType, self.shutdown)
+
+    async def shutdown(self, session: Session, restart: bool = False) -> bool:
+        await self._server.shutdown()
+        if restart:
+            self._server.loop.create_task(self._restart())
+        return True
+
+    async def _restart(self):
+        import os
+        import sys
+
+        os.execv(sys.executable, get_launch_command()["args"])
 
     @classmethod
     def create(cls, server: Server) -> ServerExtension:
         return cls(server)
 
     async def on_start(self) -> None:
-        await self.apps.clear()
         await self._server.registry.store("server:version", __version__)
         await self._server.registry.store(
             "server:directories", self._server.directories.to_json()
         )
+        await self.apps.clear()
 
     async def on_connected(self, session: Session) -> None:
         logger.info(f"Connected: {session.app.key()}")

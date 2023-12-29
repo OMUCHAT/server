@@ -46,6 +46,7 @@ class OmuServer(Server):
         extensions: Optional[ExtensionRegistry] = None,
         directories: Optional[Directories] = None,
     ) -> None:
+        self._loop = asyncio.get_event_loop()
         self._address = address
         self._listeners: List[ServerListener] = []
         self._network = network or AiohttpNetwork(self)
@@ -134,6 +135,10 @@ class OmuServer(Server):
 
     def remove_listener(self, listener: ServerListener) -> None:
         self._listeners.remove(listener)
+
+    @property
+    def loop(self) -> asyncio.AbstractEventLoop:
+        return self._loop
 
     @property
     def address(self) -> Address:
