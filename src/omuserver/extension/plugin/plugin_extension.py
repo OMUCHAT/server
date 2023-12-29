@@ -38,6 +38,8 @@ class PluginExtension(Extension, ServerListener):
 
     async def _load_plugins(self) -> None:
         for plugin in self._server.directories.plugins.iterdir():
+            if plugin.name.startswith("."):
+                continue
             await self._load_plugin(plugin)
 
     async def _load_plugin(self, path: Path) -> None:
