@@ -28,15 +28,17 @@ class ServerExtension(Extension, NetworkListener, ServerListener):
 
     async def shutdown(self, session: Session, restart: bool = False) -> bool:
         await self._server.shutdown()
-        if restart:
-            self._server.loop.create_task(self._restart())
+        self._server.loop.create_task(self._shutdown(restart))
         return True
 
-    async def _restart(self):
-        import os
-        import sys
+    async def _shutdown(self, restart: bool = False) -> None:
+        if restart:
+            import os
+            import sys
 
-        os.execv(sys.executable, get_launch_command()["args"])
+            os.execv(sys.executable, get_launch_command()["args"])
+        else:
+            self._server.loop.stop()
 
     @classmethod
     def create(cls, server: Server) -> ServerExtension:
