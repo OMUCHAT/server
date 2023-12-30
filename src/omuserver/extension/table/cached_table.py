@@ -48,9 +48,12 @@ class CachedTable[T](ServerTable[T], SessionListener):
             raise Exception("Table not loaded")
         if not self._changed:
             return
+        self._changed = False
         await self._table.store()
 
     async def load(self) -> None:
+        if self._changed:
+            raise Exception("Table not stored")
         if self._loaded:
             return
         await self._table.load()
@@ -223,7 +226,6 @@ class CachedTable[T](ServerTable[T], SessionListener):
 
     async def save_task(self) -> None:
         while self._changed:
-            self._changed = False
             await self.store()
             await asyncio.sleep(30)
 
