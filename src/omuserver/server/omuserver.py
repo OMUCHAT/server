@@ -19,6 +19,7 @@ from omuserver.extension.server import ServerExtension
 from omuserver.extension.table import TableExtension
 from omuserver.network import Network
 from omuserver.network.aiohttp_network import AiohttpNetwork
+from omuserver.utils.helper import safe_path_join
 
 from .. import __version__
 from .server import Server, ServerListener
@@ -94,7 +95,8 @@ class OmuServer(Server):
         if not path:
             return web.Response(status=400)
         try:
-            path = self._directories.assets / path
+            path = safe_path_join(self._directories.assets, path)
+
             if not path.exists():
                 return web.Response(status=404)
             return web.FileResponse(path)
