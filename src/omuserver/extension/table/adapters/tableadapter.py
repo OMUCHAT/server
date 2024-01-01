@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import abc
 import json as _json
 from pathlib import Path
@@ -19,7 +21,7 @@ class json:
 class TableAdapter(abc.ABC):
     @classmethod
     @abc.abstractmethod
-    def create(cls, path: Path) -> "TableAdapter":
+    def create(cls, path: Path) -> TableAdapter:
         pass
 
     @abc.abstractmethod

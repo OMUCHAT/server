@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sqlite3
 from pathlib import Path
 from typing import Dict
@@ -21,7 +23,7 @@ class SqliteTableAdapter(TableAdapter):
         self._conn.commit()
 
     @classmethod
-    def create(cls, path: Path) -> "TableAdapter":
+    def create(cls, path: Path) -> TableAdapter:
         return cls(path)
 
     async def store(self) -> None:
@@ -67,24 +69,6 @@ class SqliteTableAdapter(TableAdapter):
             f"DELETE FROM {self._table} WHERE key IN ({','.join('?' for _ in keys)})",
             keys,
         )
-
-    """
-    DictTableAdapter:
-    async def fetch(
-        self, before: int | None, after: int | None, cursor: str | None
-    ) -> Dict[str, Json]:
-        keys = list(self._data.keys())
-        if cursor is None:
-            cursor = await self.first() if before is not None else await self.last()
-        if cursor is None:
-            return {}
-        index = keys.index(cursor)
-        if before is not None:
-            keys = keys[max(0, index - before) :]
-        if after is not None:
-            keys = keys[: min(len(keys), index + after + 1)]
-        return {key: self._data[key] for key in keys}
-    """
 
     async def fetch(
         self, before: int | None, after: int | None, cursor: str | None

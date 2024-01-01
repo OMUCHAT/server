@@ -10,7 +10,7 @@ class DictTableAdapter(TableAdapter):
         self._data: Dict[str, Json] = {}
 
     @classmethod
-    def create(cls, path: Path) -> "TableAdapter":
+    def create(cls, path: Path) -> TableAdapter:
         return cls(path)
 
     async def store(self) -> None:
