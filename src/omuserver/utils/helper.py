@@ -13,7 +13,7 @@ def safe_path(root: Path, path: Path) -> Path:
 
 
 def safe_path_join(root: Path, *paths: Path | str) -> Path:
-    return safe_path(root, root.joinpath(*paths))
+    return root / safe_path(root, root.joinpath(*paths))
 
 
 class LaunchCommand(TypedDict):
