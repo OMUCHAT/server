@@ -10,7 +10,7 @@ from omuserver.extension import Extension
 from omuserver.extension.table import TableExtension
 from omuserver.network import NetworkListener
 from omuserver.server.server import ServerListener
-from omuserver.utils.python import get_launch_command
+from omuserver.utils.helper import get_launch_command
 
 if TYPE_CHECKING:
     from omuserver.server import Server
