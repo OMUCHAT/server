@@ -74,12 +74,12 @@ class ServerEndpoint[Req, Res, ReqData, ResData](Endpoint):
             json = self._endpoint.response_serializer.serialize(res)
             await session.send(
                 EndpointReceiveEvent,
-                EndpointDataReq(type=data["type"], key=data["key"], data=json),
+                EndpointDataReq(type=data["type"], id=data["id"], data=json),
             )
         except Exception as e:
             await session.send(
                 EndpointErrorEvent,
-                EndpointError(type=data["type"], key=data["key"], error=str(e)),
+                EndpointError(type=data["type"], id=data["id"], error=str(e)),
             )
             raise e
 
@@ -95,7 +95,7 @@ class EndpointCall:
     async def error(self, error: str) -> None:
         await self._session.send(
             EndpointErrorEvent,
-            EndpointError(type=self._data["type"], key=self._data["key"], error=error),
+            EndpointError(type=self._data["type"], id=self._data["id"], error=error),
         )
 
 
@@ -137,35 +137,43 @@ class EndpointExtension(Extension, ServerListener):
             logger.warning(
                 f"{session.app.name} tried to call unknown endpoint {req['type']}"
             )
+            await session.send(
+                EndpointErrorEvent,
+                EndpointError(
+                    type=req["type"],
+                    id=req["id"],
+                    error=f"Endpoint not found {req['type']}",
+                ),
+            )
             return
         await endpoint.call(req, session)
-        self._calls[f"{req['type']}:{req['key']}"] = EndpointCall(session, req)
+        self._calls[f"{req['type']}:{req["id"]}"] = EndpointCall(session, req)
 
     async def _on_endpoint_receive(
         self, session: Session, req: EndpointDataReq
     ) -> None:
-        call = self._calls.get(f"{req['type']}:{req['key']}")
+        call = self._calls.get(f"{req['type']}:{req['id']}")
         if call is None:
             await session.send(
                 EndpointErrorEvent,
                 EndpointError(
-                    type=req["type"], key=req["key"], error="Endpoint not connected"
+                    type=req["type"], id=req["id"], error="Endpoint not connected"
                 ),
             )
             return
         await call.receive(req)
 
     async def _on_endpoint_error(self, session: Session, error: EndpointError) -> None:
-        call = self._calls.get(f"{error['type']}:{error['key']}")
+        call = self._calls.get(f"{error['type']}:{error['id']}")
         if call is None:
             await session.send(
                 EndpointErrorEvent,
                 EndpointError(
-                    type=error["type"], key=error["key"], error="Endpoint not connected"
+                    type=error["type"], id=error["id"], error="Endpoint not connected"
                 ),
             )
-            return
-        await call.error(error["error"])
+        else:
+            await call.error(error["error"])
 
     @classmethod
     def create(cls, server: Server) -> EndpointExtension:
@@ -179,7 +187,7 @@ class EndpointExtension(Extension, ServerListener):
             await session.send(
                 EndpointErrorEvent,
                 EndpointError(
-                    type=req["type"], key=req["key"], error="Endpoint not connected"
+                    type=req["type"], id=req["id"], error="Endpoint not connected"
                 ),
             )
             logger.warning(
