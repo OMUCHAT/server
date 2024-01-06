@@ -4,15 +4,16 @@ import abc
 import asyncio
 from typing import TYPE_CHECKING
 
-from omuserver.extension.message.message_extension import MessageExtension
-
 if TYPE_CHECKING:
     from omu.connection import Address
 
     from omuserver.directories import Directories
     from omuserver.event.event_registry import EventRegistry
+    from omuserver.extension.asset.asset_extension import AssetExtension
     from omuserver.extension.endpoint import EndpointExtension
     from omuserver.extension.extension_registry import ExtensionRegistry
+    from omuserver.extension.message.message_extension import MessageExtension
+    from omuserver.extension.plugin.plugin_extension import PluginExtension
     from omuserver.extension.registry import RegistryExtension
     from omuserver.extension.table import TableExtension
     from omuserver.network import Network
@@ -75,6 +76,16 @@ class Server(abc.ABC):
     @property
     @abc.abstractmethod
     def messages(self) -> MessageExtension:
+        ...
+
+    @property
+    @abc.abstractmethod
+    def plugins(self) -> PluginExtension:
+        ...
+
+    @property
+    @abc.abstractmethod
+    def assets(self) -> AssetExtension:
         ...
 
     @property

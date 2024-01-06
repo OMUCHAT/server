@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import abc
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from omuserver.server import Server
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from omuserver.server import Server
 
 
 class Plugin(abc.ABC):

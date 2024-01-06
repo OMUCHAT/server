@@ -5,10 +5,12 @@ import importlib.util
 import inspect
 from pathlib import Path
 from types import ModuleType
-
-from omuserver.server import Server
+from typing import TYPE_CHECKING
 
 from .plugin import Plugin
+
+if TYPE_CHECKING:
+    from omuserver.server import Server
 
 
 class ServerModule(abc.ABC):

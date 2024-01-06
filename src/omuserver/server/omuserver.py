@@ -11,6 +11,7 @@ from omu.event import EVENTS
 from omuserver.directories import Directories, get_directories
 from omuserver.event.event_registry import EventRegistry
 from omuserver.extension import ExtensionRegistry, ExtensionRegistryServer
+from omuserver.extension.asset.asset_extension import AssetExtension
 from omuserver.extension.endpoint import EndpointExtension
 from omuserver.extension.message.message_extension import MessageExtension
 from omuserver.extension.plugin.plugin_extension import PluginExtension
@@ -63,6 +64,7 @@ class OmuServer(Server):
         self._registry = self.extensions.register(RegistryExtension)
         self._message = self.extensions.register(MessageExtension)
         self._plugin = self.extensions.register(PluginExtension)
+        self._assets = self.extensions.register(AssetExtension)
 
         self._network.add_websocket_route("/ws")
         self._network.add_http_route("/proxy", self._handle_proxy)
@@ -177,6 +179,14 @@ class OmuServer(Server):
     @property
     def messages(self) -> MessageExtension:
         return self._message
+
+    @property
+    def plugins(self) -> PluginExtension:
+        return self._plugin
+
+    @property
+    def assets(self) -> AssetExtension:
+        return self._assets
 
     @property
     def running(self) -> bool:

@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict
+from typing import TYPE_CHECKING, Dict
 
 from omuserver.extension import Extension
-from omuserver.server import Server, ServerListener
+from omuserver.server import ServerListener
 
 from .plugin import Plugin, ServerPlugin
 
+if TYPE_CHECKING:
+    from omuserver.server import Server
 
 class PluginLoader:
     def __init__(self, server: Server) -> None:
