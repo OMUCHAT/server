@@ -186,6 +186,7 @@ class CachedTable[T](ServerTable[T], SessionListener):
                 del self._cache[key]
         for listener in self._listeners:
             await listener.on_remove(removed)
+        self.mark_changed()
 
     async def clear(self) -> None:
         await self._table.clear()
