@@ -4,8 +4,11 @@ from pathlib import Path
 from typing import List, TypedDict
 
 
-# https://stackoverflow.com/questions/45188708/how-to-prevent-directory-traversal-attack-from-python-code#answer-45190125
 def safe_path(root: Path, path: Path) -> Path:
+    """
+    How to prevent directory traversal attack from Python code
+    https://stackoverflow.com/a/45190125
+    """
     result = root.joinpath(path).resolve()
     if not result.is_relative_to(root.resolve()):
         raise ValueError(f"Path {path} is not relative to {root}")
