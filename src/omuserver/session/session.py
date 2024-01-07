@@ -4,8 +4,10 @@ import abc
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from omu import App
     from omu.event import EventJson, EventType
-    from omu.extension.server import App
+
+    from omuserver.security import Permission
 
 
 class Session(abc.ABC):
@@ -17,6 +19,11 @@ class Session(abc.ABC):
     @property
     @abc.abstractmethod
     def closed(self) -> bool:
+        ...
+
+    @property
+    @abc.abstractmethod
+    def permissions(self) -> Permission:
         ...
 
     @abc.abstractmethod

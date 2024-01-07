@@ -1,7 +1,6 @@
 import pathlib
 from dataclasses import dataclass
-
-from .utils.debug import DEBUG
+from typing import LiteralString
 
 
 @dataclass
@@ -22,6 +21,11 @@ class Directories:
             "plugins": str(self.plugins),
         }
 
+    def get(self, name: LiteralString):
+        path = self.data / name
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
     def __post_init__(self):
         self.data = pathlib.Path(self.data)
         self.assets = pathlib.Path(self.assets)
@@ -34,9 +38,9 @@ class Directories:
         return str(self)
 
 
-def get_directories():
+def get_directories(debug=False):
     cwd = pathlib.Path.cwd()
-    if DEBUG:
+    if debug:
         return Directories(
             data=cwd / "data",
             assets=cwd / "assets",

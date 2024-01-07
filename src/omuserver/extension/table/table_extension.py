@@ -181,7 +181,7 @@ class TableExtension(Extension, ServerListener):
         return table
 
     def get_table_path(self, info: TableInfo) -> Path:
-        path = self._server.directories.data / "tables" / info.owner / info.name
+        path = self._server.directories.get("tables") / info.owner / info.name
         path.mkdir(parents=True, exist_ok=True)
         return path
 

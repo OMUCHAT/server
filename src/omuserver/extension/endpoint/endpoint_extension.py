@@ -18,8 +18,7 @@ from omu.extension.endpoint.endpoint_extension import (
 
 from omuserver.extension import Extension
 from omuserver.extension.table import TableExtension
-from omuserver.server import Server
-from omuserver.server.server import ServerListener
+from omuserver.server import Server, ServerListener
 from omuserver.session import Session
 
 

@@ -11,6 +11,7 @@ from .plugin import Plugin, ServerPlugin
 if TYPE_CHECKING:
     from omuserver.server import Server
 
+
 class PluginLoader:
     def __init__(self, server: Server) -> None:
         self._server = server
@@ -27,9 +28,9 @@ class PluginLoader:
 class PluginExtension(Extension, ServerListener):
     def __init__(self, server: Server) -> None:
         self._server = server
-        server.add_listener(self)
         self.plugins: Dict[str, Plugin] = {}
         self.loader = PluginLoader(server)
+        server.add_listener(self)
 
     @classmethod
     def create(cls, server: Server) -> PluginExtension:

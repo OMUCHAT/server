@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from omuserver.extension.registry import RegistryExtension
     from omuserver.extension.table import TableExtension
     from omuserver.network import Network
+    from omuserver.security import Security
 
 
 class ServerListener:
@@ -41,6 +42,11 @@ class Server(abc.ABC):
     @property
     @abc.abstractmethod
     def directories(self) -> Directories:
+        ...
+
+    @property
+    @abc.abstractmethod
+    def security(self) -> Security:
         ...
 
     @property

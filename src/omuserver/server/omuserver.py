@@ -8,6 +8,7 @@ from loguru import logger
 from omu.connection import Address
 from omu.event import EVENTS
 
+from omuserver import __version__
 from omuserver.directories import Directories, get_directories
 from omuserver.event.event_registry import EventRegistry
 from omuserver.extension import ExtensionRegistry, ExtensionRegistryServer
@@ -20,9 +21,9 @@ from omuserver.extension.server import ServerExtension
 from omuserver.extension.table import TableExtension
 from omuserver.network import Network
 from omuserver.network.aiohttp_network import AiohttpNetwork
+from omuserver.security.security import ServerSecurity
 from omuserver.utils.helper import safe_path_join
 
-from .. import __version__
 from .server import Server, ServerListener
 
 client = aiohttp.ClientSession(
@@ -47,16 +48,18 @@ class OmuServer(Server):
         network: Optional[Network] = None,
         extensions: Optional[ExtensionRegistry] = None,
         directories: Optional[Directories] = None,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> None:
-        self._loop = asyncio.get_event_loop()
+        self._loop = loop or asyncio.get_event_loop()
         self._address = address
         self._listeners: List[ServerListener] = []
+        self._directories = directories or get_directories()
+        self._directories.mkdir()
         self._network = network or AiohttpNetwork(self)
         self._events = EventRegistry(self)
         self._events.register(EVENTS.Connect, EVENTS.Ready)
         self._extensions = extensions or ExtensionRegistryServer(self)
-        self._directories = directories or get_directories()
-        self._directories.mkdir()
+        self._security = ServerSecurity(self)
         self._running = False
         self._endpoint = self.extensions.register(EndpointExtension)
         self._tables = self.extensions.register(TableExtension)
@@ -107,7 +110,7 @@ class OmuServer(Server):
             return web.Response(status=500)
 
     def run(self) -> None:
-        loop = asyncio.get_event_loop()
+        loop = self.loop
 
         try:
             loop.set_exception_handler(self.handle_exception)
@@ -147,6 +150,10 @@ class OmuServer(Server):
     @property
     def address(self) -> Address:
         return self._address
+
+    @property
+    def security(self) -> ServerSecurity:
+        return self._security
 
     @property
     def directories(self) -> Directories:

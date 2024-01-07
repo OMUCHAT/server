@@ -16,7 +16,7 @@ class Registry(SessionListener):
         self._key = f"{app}:{name}"
         self._registry = {}
         self._listeners: set[Session] = set()
-        self._path = server.directories.data / "registry" / app / f"{name}.json"
+        self._path = server.directories.get("registry") / app / f"{name}.json"
         self._changed = False
         self.data = None
 

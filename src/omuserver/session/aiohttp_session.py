@@ -4,16 +4,21 @@ from typing import Any, List
 
 from aiohttp import web
 from loguru import logger
-from omu.event.event import EventJson, EventType
-from omu.extension.server.model.app import App, AppJson
+from omu.event import EVENTS, EventJson, EventType
+from omu.extension.server.model.app import App
 
+from omuserver.security import Permission
+from omuserver.server import Server
 from omuserver.session import Session, SessionListener
 
 
 class AiohttpSession(Session):
-    def __init__(self, socket: web.WebSocketResponse, app: App) -> None:
+    def __init__(
+        self, socket: web.WebSocketResponse, app: App, permissions: Permission
+    ) -> None:
         self.socket = socket
         self._app = app
+        self._permissions = permissions
         self._listeners: List[SessionListener] = []
 
     @property
@@ -24,14 +29,22 @@ class AiohttpSession(Session):
     def closed(self) -> bool:
         return self.socket.closed
 
+    @property
+    def permissions(self) -> Permission:
+        return self.permissions
+
     @classmethod
-    async def create(cls, socket: web.WebSocketResponse) -> AiohttpSession:
-        event = EventJson.from_json_as(AppJson, await socket.receive_json())
-        try:
-            app = App.from_json(event.data)
-        except Exception as e:
-            raise ValueError(f"Received invalid app: {event}") from e
-        return cls(socket, app)
+    async def create(
+        cls, server: Server, socket: web.WebSocketResponse
+    ) -> AiohttpSession:
+        event = EventJson.from_json_as(EVENTS.Connect, await socket.receive_json())
+        token = await server.security.get_token(event.app, event.token)
+        if token is None:
+            raise ValueError("Invalid token")
+        permissions = await server.security.get_permissions(token)
+        self = cls(socket, app=event.app, permissions=permissions)
+        await self.send(EVENTS.Token, token)
+        return self
 
     async def listen(self) -> None:
         try:

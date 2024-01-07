@@ -9,7 +9,7 @@ from omuserver import __version__
 from omuserver.extension import Extension
 from omuserver.extension.table import TableExtension
 from omuserver.network import NetworkListener
-from omuserver.server.server import ServerListener
+from omuserver.server import ServerListener
 from omuserver.utils.helper import get_launch_command
 
 if TYPE_CHECKING:

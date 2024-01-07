@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Dict, List
 
 from aiohttp import web
 from loguru import logger
+from omu import App
 from omu.event import EVENTS
 
 from omuserver.server import ServerListener
@@ -32,23 +33,18 @@ class AiohttpNetwork(Network, ServerListener, SessionListener):
     ) -> None:
         self._app.router.add_get(path, handle)
 
-    def add_websocket_route(
-        self, path: str, handle: Coro[[Session], None] | None = None
-    ) -> None:
+    def add_websocket_route(self, path: str) -> None:
         async def websocket_handler(request: web.Request) -> web.WebSocketResponse:
             ws = web.WebSocketResponse()
             await ws.prepare(request)
-            session = await AiohttpSession.create(ws)
-            if handle:
-                await handle(session)
-            else:
-                await self._handle_session(session)
+            session = await AiohttpSession.create(self._server, ws)
+            await self._handle_session(session)
             return ws
 
         self._app.router.add_get(path, websocket_handler)
 
     async def _handle_session(self, session: Session) -> None:
-        if session.app.key() in self._sessions:
+        if self.is_connected(session.app):
             logger.warning(f"Session {session.app} already connected")
             await self._sessions[session.app.key()].disconnect()
             return
@@ -59,6 +55,9 @@ class AiohttpNetwork(Network, ServerListener, SessionListener):
         await session.send(EVENTS.Ready, None)
         await session.listen()
 
+    def is_connected(self, app: App) -> bool:
+        return app.key() in self._sessions
+
     async def on_disconnected(self, session: Session) -> None:
         if session.app.key() not in self._sessions:
             return
@@ -66,11 +65,15 @@ class AiohttpNetwork(Network, ServerListener, SessionListener):
         for listener in self._listeners:
             await listener.on_disconnected(session)
 
+    async def _handle_start(self, app: web.Application) -> None:
+        logger.info(f"Listening on {self._server.address}")
+
     async def start(self) -> None:
+        self._app.on_startup.append(self._handle_start)
         runner = web.AppRunner(self._app)
         await runner.setup()
         site = web.TCPSite(runner, self._server.address.host, self._server.address.port)
-        await site.start()
+        self._server.loop.create_task(site.start())
 
     def add_listener(self, listener: NetworkListener) -> None:
         self._listeners.append(listener)
