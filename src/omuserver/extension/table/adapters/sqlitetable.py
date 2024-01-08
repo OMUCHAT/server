@@ -70,24 +70,43 @@ class SqliteTableAdapter(TableAdapter):
     async def fetch(
         self, before: int | None, after: int | None, cursor: str | None
     ) -> Dict[str, Json]:
-        if cursor is None:
-            cursor = await self.first() if before is not None else await self.last()
-        if cursor is None:
-            return {}
+        if cursor is not None:
+            _cursor = self._conn.execute("SELECT id FROM data WHERE key = ?", (cursor,))
+            row = _cursor.fetchone()
+            if row is None:
+                raise ValueError(f"Cursor {cursor} not found")
+            cursor = row[0]
+
         items = {}
         if before is not None:
-            _cursor = self._conn.execute(
-                "SELECT key, value FROM data WHERE key <= ? ORDER BY id DESC LIMIT ?",
-                (cursor, before),
+            if cursor is None:
+                _cursor = self._conn.execute(
+                    "SELECT id, key, value FROM data ORDER BY id DESC LIMIT ?",
+                    (before,),
+                )
+            else:
+                _cursor = self._conn.execute(
+                    "SELECT id, key, value FROM data WHERE id <= ? ORDER BY id DESC LIMIT ?",
+                    (cursor, before),
+                )
+            items.update(
+                {row[0]: (row[1], json.loads(row[2])) for row in _cursor.fetchall()}
             )
-            items.update({row[0]: json.loads(row[1]) for row in _cursor.fetchall()})
         if after is not None:
-            _cursor = self._conn.execute(
-                "SELECT key, value FROM data WHERE key >= ? ORDER BY id ASC LIMIT ?",
-                (cursor, after),
+            if cursor is None:
+                _cursor = self._conn.execute(
+                    "SELECT id, key, value FROM data ORDER BY id LIMIT ?",
+                    (after,),
+                )
+            else:
+                _cursor = self._conn.execute(
+                    "SELECT id, key, value FROM data WHERE id >= ? ORDER BY id LIMIT ?",
+                    (cursor, after),
+                )
+            items.update(
+                {row[0]: (row[1], json.loads(row[2])) for row in _cursor.fetchall()}
             )
-            items.update({row[0]: json.loads(row[1]) for row in _cursor.fetchall()})
-        return items
+        return {key: value for _, (key, value) in sorted(items.items(), reverse=True)}
 
     async def first(self) -> str | None:
         _cursor = self._conn.execute("SELECT key FROM data ORDER BY id LIMIT 1")
