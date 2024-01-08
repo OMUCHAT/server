@@ -9,6 +9,7 @@ from loguru import logger
 from omu import Address
 
 from omuserver.directories import get_directories
+from omuserver.security.permission import AdminPermissions
 from omuserver.server.omuserver import OmuServer
 
 
@@ -28,7 +29,7 @@ type Coro[**P, T] = Callable[P, Coroutine[None, None, T]]
 def main(debug: bool, token: str | None):
     loop = asyncio.get_event_loop()
     if debug:
-        logger.info("Enabling debug mode...")
+        logger.warning("Debug mode enabled")
         tracemalloc.start()
 
     directories = get_directories(debug=debug)
@@ -38,10 +39,10 @@ def main(debug: bool, token: str | None):
         secure=False,
     )
     server = OmuServer(address, directories=directories, loop=loop)
-    # if token:
-    #     loop.run_until_complete(
-    #         server.security.add_permissions(token, AdminPermissions("admin"))
-    #     )
+    if token:
+        loop.run_until_complete(
+            server.security.add_permissions(token, AdminPermissions("admin"))
+        )
 
     logger.info("Starting server...")
     server.run()

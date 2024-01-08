@@ -38,10 +38,7 @@ class AiohttpSession(Session):
         cls, server: Server, socket: web.WebSocketResponse
     ) -> AiohttpSession:
         event = EventJson.from_json_as(EVENTS.Connect, await socket.receive_json())
-        token = await server.security.get_token(event.app, event.token)
-        if token is None:
-            raise ValueError("Invalid token")
-        permissions = await server.security.get_permissions(token)
+        permissions, token = await server.security.auth_app(event.app, event.token)
         self = cls(socket, app=event.app, permissions=permissions)
         await self.send(EVENTS.Token, token)
         return self

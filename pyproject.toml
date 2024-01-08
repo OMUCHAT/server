@@ -8,6 +8,7 @@ authors = [
 dependencies = [
     "aiohttp>=3.9.1",
     "sqlitedict>=2.1.0",
+    "click>=8.1.7",
 ]
 readme = "README.md"
 requires-python = ">= 3.12"
